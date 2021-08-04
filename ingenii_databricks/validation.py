@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from .table_utils import handle_name, MergeType
+from ingenii_databricks.table_utils import handle_name, MergeType
 
 
 class ParameterException(Exception):
