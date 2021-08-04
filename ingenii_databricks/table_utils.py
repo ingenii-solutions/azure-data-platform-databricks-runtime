@@ -259,10 +259,14 @@ class MergeType:
     MERGE_DATE_ROWS = "merge_date_rows"
     MERGE_UPDATE = "merge_update"
     MERGE_INSERT = "merge_insert"
+    INSERT = "insert"
 
     @classmethod
     def all_types(cls):
-        return [cls.MERGE_DATE_ROWS, cls.MERGE_UPDATE, cls.MERGE_INSERT]
+        return [
+            cls.MERGE_DATE_ROWS, cls.MERGE_UPDATE,
+            cls.MERGE_INSERT, cls.INSERT
+        ]
 
     @classmethod
     def check_type(cls, type_to_check):

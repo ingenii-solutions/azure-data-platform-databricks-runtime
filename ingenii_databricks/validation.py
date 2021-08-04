@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from ingenii_databricks.table_utils import handle_name
+from .table_utils import handle_name, MergeType
 
 
 class ParameterException(Exception):
@@ -90,9 +90,20 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 f"Databricks. Suggested name: {handle_name(table['name'])}"
                 )
 
+        # Check that the join type is understood
+        if table.get("join", {}).get("type") is not None:
+            if not MergeType.check_type(table["join"]["type"]):
+                errors.append(
+                    f"Source {source_dict['name']}, "
+                    f"table {table['name']}: "
+                    f"Trying to join using the type {table['join']['type']}, "
+                    f"but this isn't one of the possible options: "
+                    f"{MergeType.all_types()}"
+                )
+
         # Check that the columns we want to join on make sense
         column_names = [c["name"] for c in table["columns"]]
-        if table["join"].get("column") is not None:
+        if table.get("join", {}).get("column") is not None:
             join_columns = table["join"]["column"].split(",")
             for col in join_columns:
                 if col not in column_names and f"`{col}`" not in column_names:
