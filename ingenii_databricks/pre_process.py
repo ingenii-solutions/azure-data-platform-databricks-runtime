@@ -1,4 +1,5 @@
 import csv
+from os.path import exists
 import json
 
 
@@ -10,6 +11,11 @@ class PreProcess:
         self.file_name = file_name
 
         self.development = development
+
+        if not exists(self.get_file_path()):
+            raise Exception(
+                f"Unable to find file at {self.get_file_path()}!"
+            )
 
     def get_file_path(self):
         if self.development:
