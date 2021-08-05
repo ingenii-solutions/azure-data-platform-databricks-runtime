@@ -82,11 +82,5 @@ get-aad-token:
 	export DATABRICKS_AAD_TOKEN=$(az account get-access-token --tenant 20b68445-3d97-4c4f-981c-fe8ffc7ffaa7 | jq .accessToken --raw-output)
 	databricks configure --aad-token
 
-setup:
-	@cp .env-dist .env
-
-dbt-sync:
-	az storage blob sync --account-name $(UTILITIES_STORAGE_ACCOUNT_NAME) --account-key $(UTILITIES_STORAGE_ACCOUNT_KEY) -c dbt -s dbt
-
 upload-notebooks:
 	find notebooks -iname '*.py' | awk -F'/' '{print $$2}' | awk -F'.' '{print $$1}' | xargs -I {} databricks workspace import -l PYTHON notebooks/{}.py /Shared/Ingenii\ Engineering/{}
