@@ -1,6 +1,5 @@
 from datetime import date, datetime
 from delta.tables import DeltaTable
-import json
 from pyspark.sql.dataframe import DataFrame
 from typing import List
 
@@ -76,16 +75,3 @@ class OrchestrationTable:
     @staticmethod
     def _convert_to_dictionaries(dataframe) -> List[dict]:
         return list(map(lambda row: row.asDict(), dataframe.collect()))
-
-    def _publish_current_table(self):
-        filename = "/".join([
-            "/dbfs",
-            self.get_orch_table_folder(),
-            "current.json"
-        ])
-        with open(filename, "w") as current_file:
-            for row in self.get_orch_table_df() \
-                           .sort(self.primary_keys) \
-                           .rdd.toLocalIterator():
-                json.dump(row.asDict(), current_file, default=json_serial)
-                current_file.write("\n")
