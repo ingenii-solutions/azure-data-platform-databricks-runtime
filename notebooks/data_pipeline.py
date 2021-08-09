@@ -4,12 +4,14 @@ from os import environ
 from py4j.protocol import Py4JJavaError
 from typing import Union
 
+from ingenii_data_engineering.validation import check_source_schema
+
 from ingenii_databricks.pipeline import add_to_source_table, archive_file, \
     create_file_table, move_rows_to_review, prepare_individual_table_yml, \
     remove_file_table, revert_individual_table_yml, test_file_table
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.schema_yml import get_source
-from ingenii_databricks.validation import check_parameters, check_source_schema
+from ingenii_databricks.validation import check_parameters
 
 # COMMAND ----------
 
