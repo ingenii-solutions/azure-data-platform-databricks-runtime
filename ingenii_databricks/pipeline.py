@@ -1,5 +1,5 @@
 from datetime import datetime
-from os import environ, path
+from os import environ, mkdir, path
 from pyspark.dbutils import DBUtils
 from pyspark.sql.functions import lit
 from pyspark.sql.session import SparkSession
@@ -63,6 +63,14 @@ def archive_file(import_entry: ImportFileEntry) -> None:
     import_entry : ImportFileEntry
         Import entry for the specific file
     """
+
+    source_folder = "/" + "/".join([
+        "dbfs", "mnt", "archive", import_entry.get_source_name()])
+    if not path.exists(source_folder):
+        mkdir(source_folder)
+    source_folder += f"/{import_entry.details['table']}"
+    if not path.exists(source_folder):
+        mkdir(source_folder)
 
     if not path.exists("/dbfs" + import_entry.get_archive_path()):
         move("/dbfs" + import_entry.get_file_path(),
