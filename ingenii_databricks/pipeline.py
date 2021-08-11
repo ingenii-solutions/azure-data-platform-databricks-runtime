@@ -7,11 +7,12 @@ from shutil import move
 from subprocess import run
 from typing import List
 
+from ingenii_data_engineering.dbt_schema import add_individual_table, \
+    get_table_def, revert_yml
+
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     get_errors_from_stdout, move_dbt_log_file
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.schema_yml import add_individual_table, \
-    get_table_def, revert_yml
 from ingenii_databricks.table_utils import create_database, create_table, \
     delete_table, insert_dataframe_into_table, is_table, \
     merge_dataframe_into_table, MergeType, read_file

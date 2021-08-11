@@ -4,8 +4,9 @@ from re import compile
 from shutil import move
 from typing import Tuple
 
+from ingenii_data_engineering.dbt_schema import get_project_config
+
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.schema_yml import get_project_config
 
 ansi_escape = compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 

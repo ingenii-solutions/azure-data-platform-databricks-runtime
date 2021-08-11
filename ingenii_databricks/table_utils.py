@@ -107,7 +107,7 @@ def schema_as_string(schema_list: list) -> str:
         The schema in SQL form
     """
     return ", ".join([
-        f"{handle_name(s['name'])} {s['data_type']}"
+        f"`{handle_name(s['name']).strip('`')}` {s['data_type']}"
         for s in schema_list
     ])
 
@@ -244,7 +244,8 @@ def _difference_condition_string(all_columns: List[str],
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
     return " OR ".join([
-        f"deltatable.{handle_name(column)} <> dataframe.{handle_name(column)}"
+        f"deltatable.`{handle_name(column)}` <> "
+        f"dataframe.`{handle_name(column)}`"
         for column in all_columns
         if column not in merge_columns and not column.startswith("_")
     ])

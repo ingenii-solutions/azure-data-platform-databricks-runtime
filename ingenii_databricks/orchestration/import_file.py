@@ -383,7 +383,7 @@ class ImportFileEntry(OrchestrationTable):
             The folder path
         """
         return self.add_current_increment(get_folder_path(
-            "bronze", self.details["source"], self.details["table"],
+            "source", self.details["source"], self.details["table"],
             hash_identifier=self.details["hash"]))
 
     def get_file_table(self) -> DeltaTable:
@@ -514,7 +514,7 @@ class ImportFileEntry(OrchestrationTable):
             The folder path
         """
         return get_folder_path(
-            "bronze", self.details["source"], self.details["table"])
+            "source", self.details["source"], self.details["table"])
 
     def get_source_table(self) -> DeltaTable:
         """
