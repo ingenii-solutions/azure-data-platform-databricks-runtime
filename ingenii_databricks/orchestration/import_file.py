@@ -15,9 +15,6 @@ class ImportFileEntry(OrchestrationTable):
     """
     Object to interact with the status of an individual file's status
     """
-    hash = None
-    increment = None
-    details = {}
     orch_table = "import_file"
     stages = ["new", "staged", "archived", "cleaned", "inserted", "completed"]
     table_schema = [
@@ -37,7 +34,7 @@ class ImportFileEntry(OrchestrationTable):
     ]
     primary_keys = ["source", "table", "file_name"]
 
-    processed_file_name = None
+    details = {}
     deleted = False
 
     @property
@@ -55,6 +52,22 @@ class ImportFileEntry(OrchestrationTable):
     @property
     def processed_file_name(self):
         return self.details["processed_file_name"]
+
+    @property
+    def hash(self):
+        return self.details["hash"]
+
+    @hash.setter
+    def hash(self, value):
+        self.details["hash"] = value
+
+    @property
+    def increment(self):
+        return self.details["increment"]
+
+    @increment.setter
+    def increment(self, value):
+        self.details["increment"] = value
 
     def __init__(self, spark, row_hash=None, source_name=None,
                  table_name=None, file_name=None, processed_file_name=None,
@@ -335,7 +348,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The name of the table
         """
-        return handle_name(self.details["table"]) + "_" + \
+        return handle_name(self.table) + "_" + \
             str(self.hash).replace("-", "m")
 
     # Pre-processing
@@ -396,13 +409,11 @@ class ImportFileEntry(OrchestrationTable):
             The full file path
         """
         if self.processed_file_name:
-            return get_folder_path(
-                "raw", self.details["source"], self.details["table"]
-                ) + "/" + self.processed_file_name
+            return get_folder_path("raw", self.source, self.table) + \
+                "/" + self.processed_file_name
         else:
-            return get_folder_path(
-                "raw", self.details["source"], self.details["table"]
-                ) + "/" + self.details["file_name"]
+            return get_folder_path("raw", self.source, self.table) + \
+                "/" + self.file_name
 
     def get_file_table_name(self) -> str:
         """
@@ -437,8 +448,8 @@ class ImportFileEntry(OrchestrationTable):
             The folder path
         """
         return self.add_current_increment(get_folder_path(
-            "source", self.details["source"], self.details["table"],
-            hash_identifier=self.details["hash"]))
+            "source", self.source, self.table,
+            hash_identifier=self.hash))
 
     def get_file_table(self) -> DeltaTable:
         """
