@@ -25,6 +25,7 @@ class ImportFileEntry(OrchestrationTable):
         StructField("source", StringType(), nullable=False),
         StructField("table", StringType(), nullable=False),
         StructField("file_name", StringType(), nullable=False),
+        StructField("processed_file_name", StringType(), nullable=True),
         StructField("increment", IntegerType(), nullable=False)
     ] + [
         StructField("date_" + s, TimestampType(), nullable=bool(s == "new"))
@@ -36,9 +37,28 @@ class ImportFileEntry(OrchestrationTable):
     ]
     primary_keys = ["source", "table", "file_name"]
 
+    processed_file_name = None
+    deleted = False
+
+    @property
+    def source(self):
+        return self.details["source"]
+
+    @property
+    def table(self):
+        return self.details["table"]
+
+    @property
+    def file_name(self):
+        return self.details["file_name"]
+
+    @property
+    def processed_file_name(self):
+        return self.details["processed_file_name"]
+
     def __init__(self, spark, row_hash=None, source_name=None,
-                 table_name=None, file_name=None, increment=0,
-                 extra_stages=[]):
+                 table_name=None, file_name=None, processed_file_name=None,
+                 increment=0, extra_stages=[]):
         """
         Create an ImportFileEntry instance for a specific file to be ingested
 
@@ -55,6 +75,9 @@ class ImportFileEntry(OrchestrationTable):
             The name of the table the data belongs to, by default None
         file_name : str, optional
             The name of the file the data is contained in, by default None
+        processed_file_name : str, optional
+            If the file needs pre-processing, the name of the file that's
+            produced, by default None
         increment : int, optional
             The increment of the 'attempt' to ingest the date, by default 0.
             For each cleaning stage, if there are errors a new entry is added
@@ -119,8 +142,8 @@ class ImportFileEntry(OrchestrationTable):
                         f"at dbfs:{expected_path}")
 
                 self.create_import_entry(
-                    source_name, table_name, file_name, increment,
-                    extra_stages=extra_stages)
+                    source_name, table_name, file_name, processed_file_name,
+                    increment, extra_stages=extra_stages)
             else:
                 self.hash = import_entry.first().hash
 
@@ -152,8 +175,8 @@ class ImportFileEntry(OrchestrationTable):
         return self.get_orch_table_df()
 
     def create_import_entry(self, source_name: str, table_name: str,
-                            file_name: str, increment: int,
-                            extra_stages: List[str]) -> None:
+                            file_name: str, processed_file_name: str,
+                            increment: int, extra_stages: List[str]) -> None:
         """
         Given the details of a file, create an entry on the import table
 
@@ -178,14 +201,16 @@ class ImportFileEntry(OrchestrationTable):
         datetime_now = datetime.utcnow()
         new_entry = self.spark.createDataFrame(
             data=[(
-                    source_name, table_name, file_name, increment,
+                    source_name, table_name, file_name, processed_file_name,
+                    increment,
                     datetime_now, datetime_now
                 ) + tuple(datetime_now for _ in extra_stages)
             ],
             schema=StructType([
                 f for f in self.table_schema
                 if f.name in (
-                    "source", "table", "file_name", "increment",
+                    "source", "table", "file_name", "processed_file_name",
+                    "increment",
                     "date_new", "_date_row_inserted"
                     ) + tuple("date_" + stage for stage in extra_stages)
             ])).withColumn("hash", hash("source", "table", "file_name"))
@@ -206,14 +231,10 @@ class ImportFileEntry(OrchestrationTable):
         Update this entry with the latest details
         """
         self.details = self.get_import_table_df().where(
-            (col("hash") == self.hash) &
-            (col("increment") == self.increment)
-            ).first().asDict()
+            (col("hash") == self.hash) & (col("increment") == self.increment)
+        ).first().asDict()
 
     # Utilities
-
-    def get_source_name(self):
-        return handle_name(self.details["source"])
 
     def get_current_stage(self) -> str:
         """
@@ -224,6 +245,8 @@ class ImportFileEntry(OrchestrationTable):
         str
             The name of the stage (new, staged, cleaned, etc.)
         """
+        if self.deleted:
+            return "deleted"
         return [
             s for s in self.stages
             if self.details["date_" + s] is not None
@@ -279,8 +302,7 @@ class ImportFileEntry(OrchestrationTable):
             The number of rows to update the entry with
         """
         self.get_import_table().update(
-            (col("hash") == self.hash) &
-            (col("increment") == self.increment),
+            (col("hash") == self.hash) & (col("increment") == self.increment),
             {
                 "rows_read": lit(n_rows),
                 "_date_row_updated": lit(datetime.utcnow())
@@ -302,7 +324,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The full name
         """
-        return self.get_source_name() + "." + handle_name(table_name)
+        return self.source + "." + handle_name(table_name)
 
     def get_base_table_name(self) -> str:
         """
@@ -315,6 +337,33 @@ class ImportFileEntry(OrchestrationTable):
         """
         return handle_name(self.details["table"]) + "_" + \
             str(self.hash).replace("-", "m")
+
+    # Pre-processing
+
+    def add_processed_file_name(self, processed_file_name: str) -> None:
+        """
+        If the file has been pre-processed, add the resultant name to the entry
+
+        Parameters
+        ----------
+        processed_file_name : str
+            The file name to add to the entry
+        """
+        self.get_import_table().update(
+            (col("hash") == self.hash) & (col("increment") == self.increment),
+            {
+                "processed_file_name": lit(processed_file_name),
+                "_date_row_updated": lit(datetime.utcnow())
+            })
+
+        self.get_import_entry()
+
+    def delete_entry(self):
+        """
+        Delete the entry and don't continue with the file
+        """
+        self.deleted = True
+        self.get_import_table().delete(f"hash = {self.hash}")
 
     # File table
 
@@ -346,9 +395,14 @@ class ImportFileEntry(OrchestrationTable):
         str
             The full file path
         """
-        return get_folder_path(
-            "raw", self.details["source"], self.details["table"]
-            ) + "/" + self.details["file_name"]
+        if self.processed_file_name:
+            return get_folder_path(
+                "raw", self.details["source"], self.details["table"]
+                ) + "/" + self.processed_file_name
+        else:
+            return get_folder_path(
+                "raw", self.details["source"], self.details["table"]
+                ) + "/" + self.details["file_name"]
 
     def get_file_table_name(self) -> str:
         """
@@ -457,9 +511,10 @@ class ImportFileEntry(OrchestrationTable):
         """
         return ImportFileEntry(
             self.spark,
-            source_name=self.details["source"],
-            table_name=self.details["table"],
-            file_name=self.details["file_name"],
+            source_name=self.source,
+            table_name=self.table,
+            file_name=self.file_name,
+            processed_file_name=self.processed_file_name,
             increment=self.increment + 1, extra_stages=["staged", "archived"])
 
     # Archive file
@@ -473,9 +528,12 @@ class ImportFileEntry(OrchestrationTable):
         str
             The file path
         """
-        return get_folder_path(
-            "archive", self.details["source"], self.details["table"]
-            ) + "/" + self.details["file_name"]
+        if self.processed_file_name:
+            return get_folder_path("archive", self.source, self.table) + \
+                "/" + self.processed_file_name
+        else:
+            return get_folder_path("archive", self.source, self.table) + \
+                "/" + self.file_name
 
     # Source table
 
@@ -489,7 +547,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The name of the table
         """
-        return handle_name(self.details["table"])
+        return handle_name(self.table)
 
     def get_full_source_table_name(self) -> str:
         """
@@ -513,8 +571,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The folder path
         """
-        return get_folder_path(
-            "source", self.details["source"], self.details["table"])
+        return get_folder_path("source", self.source, self.table)
 
     def get_source_table(self) -> DeltaTable:
         """
