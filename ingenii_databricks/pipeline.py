@@ -74,7 +74,8 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
         import_entry.source,
         import_entry.get_file_table_name(),
         table_schema["columns"],
-        import_entry.get_file_table_folder_path())
+        import_entry.get_file_table_folder_path(),
+        all_null=True)
 
     file_data = read_file(spark, import_entry.get_file_path(), table_schema)
 
@@ -290,12 +291,12 @@ def move_rows_to_review(spark: SparkSession, import_entry: ImportFileEntry,
     review_import_entry = import_entry.create_review_table_entry()
 
     # Create the review table
-    create_table(
-        spark,
-        import_entry.source,
-        import_entry.get_review_table_name(),
-        table_schema["columns"],
-        import_entry.get_review_table_folder_path())
+    create_table(spark,
+                 import_entry.source,
+                 import_entry.get_review_table_name(),
+                 table_schema["columns"],
+                 import_entry.get_review_table_folder_path(),
+                 all_null=True)
 
     where_clause = "WHERE " + " OR ".join([
         f"({wc})" for wc in get_error_where_clauses(

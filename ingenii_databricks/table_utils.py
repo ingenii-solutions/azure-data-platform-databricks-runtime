@@ -93,7 +93,7 @@ def handle_name(raw_name: str) -> str:
                    .replace("\n", "").replace("\t", "_").replace("=", "-")
 
 
-def schema_as_string(schema_list: list) -> str:
+def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
     used in SQL commands
@@ -102,20 +102,33 @@ def schema_as_string(schema_list: list) -> str:
     ----------
     schema_list : list
         The table schema, which requires both 'name' and 'data_type' keys
+    all_null: bool
+        Whether all the fields should be null, such as on tables where we
+        ingest individual files to test them
 
     Returns
     -------
     str
         The schema in SQL form
     """
+    def nullable(field_obj):
+        if all_null:
+            return ""
+        elif "not_null" in field_obj.get("tests", []):
+            return " NOT NULL"
+        elif field_obj.get("nullable", True):
+            return ""
+        else:
+            return " NOT NULL"
     return ", ".join([
-        f"`{handle_name(s['name']).strip('`')}` {s['data_type']}"
+        f"`{handle_name(s['name']).strip('`')}` {s['data_type']}{nullable(s)}"
         for s in schema_list
     ])
 
 
 def read_file(spark: SparkSession, file_path: str,
-              table_schema: dict) -> DataFrame:
+              table_schema: dict, all_null: bool = False
+              ) -> DataFrame:
     """
     Read a character separated file and create a dataframe
     Reference: https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameReader.csv.html#pyspark.sql.DataFrameReader.csv)
@@ -137,7 +150,7 @@ def read_file(spark: SparkSession, file_path: str,
     return spark.read.csv(
         **table_schema.get("file_details", {}),
         path=file_path,
-        schema=schema_as_string(table_schema["columns"])
+        schema=schema_as_string(table_schema["columns"], all_null=True)
         )
 
 
@@ -156,7 +169,8 @@ def create_database(spark: SparkSession, database_name: str) -> None:
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,
-                 schema_list: list, folder_path: str) -> DeltaTable:
+                 schema_list: list, folder_path: str, all_null: bool = False
+                 ) -> DeltaTable:
     """
     Create an unmanaged Delta table at a defined location
 
@@ -172,6 +186,8 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
         The schema of the table to create
     folder_path : str
         The folder path to create the table files in
+    all_null: bool
+        Whether all column should be null, regardless of the schema
 
     Returns
     -------
@@ -181,7 +197,7 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
     spark.sql(" ".join([
         f"CREATE TABLE IF NOT EXISTS",
         f"{handle_name(database_name)}.{handle_name(table_name)}",
-        f"({schema_as_string(schema_list)})",
+        f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
     ]))
     return get_table(spark, folder_path)

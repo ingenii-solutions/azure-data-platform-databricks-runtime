@@ -25,7 +25,7 @@ class ImportFileEntry(OrchestrationTable):
         StructField("processed_file_name", StringType(), nullable=True),
         StructField("increment", IntegerType(), nullable=False)
     ] + [
-        StructField("date_" + s, TimestampType(), nullable=bool(s == "new"))
+        StructField("date_" + s, TimestampType(), nullable=bool(s != "new"))
         for s in stages
     ] + [
         StructField("rows_read", IntegerType(), nullable=True),
@@ -34,40 +34,40 @@ class ImportFileEntry(OrchestrationTable):
     ]
     primary_keys = ["source", "table", "file_name"]
 
-    details = {}
+    _details = {}
     deleted = False
 
     @property
     def source(self):
-        return self.details["source"]
+        return self._details["source"]
 
     @property
     def table(self):
-        return self.details["table"]
+        return self._details["table"]
 
     @property
     def file_name(self):
-        return self.details["file_name"]
+        return self._details["file_name"]
 
     @property
     def processed_file_name(self):
-        return self.details["processed_file_name"]
+        return self._details["processed_file_name"]
 
     @property
     def hash(self):
-        return self.details["hash"]
+        return self._details["hash"]
 
     @hash.setter
     def hash(self, value):
-        self.details["hash"] = value
+        self._details["hash"] = value
 
     @property
     def increment(self):
-        return self.details["increment"]
+        return self._details["increment"]
 
     @increment.setter
     def increment(self, value):
-        self.details["increment"] = value
+        self._details["increment"] = value
 
     def __init__(self, spark, row_hash=None, source_name=None,
                  table_name=None, file_name=None, processed_file_name=None,
@@ -243,7 +243,7 @@ class ImportFileEntry(OrchestrationTable):
         """
         Update this entry with the latest details
         """
-        self.details = self.get_import_table_df().where(
+        self._details = self.get_import_table_df().where(
             (col("hash") == self.hash) & (col("increment") == self.increment)
         ).first().asDict()
 
@@ -262,7 +262,7 @@ class ImportFileEntry(OrchestrationTable):
             return "deleted"
         return [
             s for s in self.stages
-            if self.details["date_" + s] is not None
+            if self._details["date_" + s] is not None
         ][-1]
 
     def is_stage(self, stage_to_compare: str) -> bool:
@@ -292,7 +292,7 @@ class ImportFileEntry(OrchestrationTable):
         """
         self.get_import_entry()
 
-        if self.details["date_" + status_name] is None:
+        if self._details["date_" + status_name] is None:
             dt = lit(datetime.utcnow())
             self.get_import_table().update(
                 (col("hash") == self.hash) &

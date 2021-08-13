@@ -68,7 +68,11 @@ class OrchestrationTable:
     @staticmethod
     def schema_as_dict(schema_list):
         return [
-            {"name": f.name, "data_type": f.dataType.simpleString()}
+            {
+                "name": f.name,
+                "data_type": f.dataType.simpleString(),
+                "nullable": f.nullable
+            }
             for f in schema_list
         ]
 
