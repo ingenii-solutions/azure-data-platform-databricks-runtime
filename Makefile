@@ -11,6 +11,9 @@ $(eval VERSION=$(shell grep '* Current Version:' README.md | awk -F ':' '{print 
 
 # Package
 
+update-pip:
+	python -m pip install --upgrade pip
+
 build-package:
 	python setup.py bdist_wheel
 

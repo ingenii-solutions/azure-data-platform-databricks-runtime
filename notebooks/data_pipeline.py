@@ -4,12 +4,15 @@ from os import environ
 from py4j.protocol import Py4JJavaError
 from typing import Union
 
+from ingenii_data_engineering.dbt_schema import get_source
+from ingenii_data_engineering.validation import check_source_schema
+
 from ingenii_databricks.pipeline import add_to_source_table, archive_file, \
     create_file_table, move_rows_to_review, prepare_individual_table_yml, \
-    remove_file_table, revert_individual_table_yml, test_file_table
+    pre_process_file, remove_file_table, revert_individual_table_yml, \
+    test_file_table
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.schema_yml import get_source
-from ingenii_databricks.validation import check_parameters, check_source_schema
+from ingenii_databricks.validation import check_parameters
 
 # COMMAND ----------
 
@@ -74,8 +77,8 @@ import_entry = ImportFileEntry(spark, source_name=source,
 # COMMAND ----------
 
 if import_entry.is_stage("new"):
+    pre_process_file(import_entry)
     # Create individual table in the source database
-    # TODO: What if the data doesn't match the schema?
     n_rows = create_file_table(spark, import_entry, table_schema)
     import_entry.update_rows_read(n_rows)
     import_entry.update_status("staged")
@@ -140,3 +143,6 @@ if import_entry.is_stage("cleaned"):
 if import_entry.is_stage("inserted"):
     remove_file_table(spark, dbutils, import_entry)
     import_entry.update_status("completed")
+
+    # Optimize table to keep it performant
+    spark.sql("OPTIMIZE orchestration.import_file ZORDER BY (source, table)")

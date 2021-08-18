@@ -1,5 +1,5 @@
 from datetime import datetime
-from os import environ, path
+from os import environ, mkdir, path
 from pyspark.dbutils import DBUtils
 from pyspark.sql.functions import lit
 from pyspark.sql.session import SparkSession
@@ -7,14 +7,45 @@ from shutil import move
 from subprocess import run
 from typing import List
 
+from ingenii_data_engineering.dbt_schema import add_individual_table, \
+    get_table_def, revert_yml
+from ingenii_data_engineering.pre_process import PreProcess
+
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     get_errors_from_stdout, move_dbt_log_file
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.schema_yml import add_individual_table, \
-    get_table_def, revert_yml
 from ingenii_databricks.table_utils import create_database, create_table, \
     delete_table, insert_dataframe_into_table, is_table, \
     merge_dataframe_into_table, MergeType, read_file
+
+from pre_process.root import find_pre_process_function
+
+
+def pre_process_file(import_entry: ImportFileEntry):
+    """
+    If the file reqires it, pre-process it to create an ingestible version
+
+    Parameters
+    ----------
+    import_entry : ImportFileEntry
+        Import entry for the specific file
+    """
+
+    # Find if there is a function linked to this source and table
+    pre_process_function = \
+        find_pre_process_function(import_entry.source, import_entry.table)
+    if pre_process_function:
+        pre_process_obj = PreProcess(import_entry.source,
+                                     import_entry.table,
+                                     import_entry.file_name)
+        proceed, new_name = pre_process_function(pre_process_obj)
+
+        if proceed:
+            # If the pre-process function says it's safe to proceed
+            import_entry.add_processed_file_name(new_name)
+        else:
+            # If the pre-process function says the data is bad
+            import_entry.delete_entry()
 
 
 def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
@@ -37,13 +68,14 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
         The number of rows read from the file
     """
 
-    create_database(spark, import_entry.get_source_name())
+    create_database(spark, import_entry.source)
     file_table = create_table(
         spark,
-        import_entry.get_source_name(),
+        import_entry.source,
         import_entry.get_file_table_name(),
         table_schema["columns"],
-        import_entry.get_file_table_folder_path())
+        import_entry.get_file_table_folder_path(),
+        all_null=True)
 
     file_data = read_file(spark, import_entry.get_file_path(), table_schema)
 
@@ -64,6 +96,14 @@ def archive_file(import_entry: ImportFileEntry) -> None:
         Import entry for the specific file
     """
 
+    source_folder = "/" + "/".join([
+        "dbfs", "mnt", "archive", import_entry.source])
+    if not path.exists(source_folder):
+        mkdir(source_folder)
+    source_folder += f"/{import_entry.table}"
+    if not path.exists(source_folder):
+        mkdir(source_folder)
+
     if not path.exists("/dbfs" + import_entry.get_archive_path()):
         move("/dbfs" + import_entry.get_file_path(),
              "/dbfs" + import_entry.get_archive_path())
@@ -82,15 +122,12 @@ def prepare_individual_table_yml(source_yml_path: str,
     import_entry : ImportFileEntry
         Import entry for the specific file
     """
-    table_def = get_table_def(source_yml_path,
-                              import_entry.details["source"],
-                              import_entry.details["table"], )
+    table_def = get_table_def(
+        source_yml_path, import_entry.source, import_entry.table)
 
     table_def["name"] = import_entry.get_file_table_name()
 
-    add_individual_table(source_yml_path,
-                         import_entry.details["source"],
-                         table_def)
+    add_individual_table(source_yml_path, import_entry.source, table_def)
 
 
 def revert_individual_table_yml(source_yml_path: str) -> None:
@@ -122,7 +159,7 @@ def create_source_table(spark: SparkSession, import_entry: ImportFileEntry,
     table_schema : dict
         The schema of this new table
     """
-    create_database(spark, import_entry.get_source_name())
+    create_database(spark, import_entry.source)
 
     full_table_columns = \
         table_schema["columns"] + [
@@ -131,7 +168,7 @@ def create_source_table(spark: SparkSession, import_entry: ImportFileEntry,
         ]
 
     create_table(spark,
-                 import_entry.get_source_name(),
+                 import_entry.source,
                  import_entry.get_source_table_name(),
                  full_table_columns,
                  import_entry.get_source_table_folder_path())
@@ -251,12 +288,12 @@ def move_rows_to_review(spark: SparkSession, import_entry: ImportFileEntry,
     review_import_entry = import_entry.create_review_table_entry()
 
     # Create the review table
-    create_table(
-        spark,
-        import_entry.get_source_name(),
-        import_entry.get_review_table_name(),
-        table_schema["columns"],
-        import_entry.get_review_table_folder_path())
+    create_table(spark,
+                 import_entry.source,
+                 import_entry.get_review_table_name(),
+                 table_schema["columns"],
+                 import_entry.get_review_table_folder_path(),
+                 all_null=True)
 
     where_clause = "WHERE " + " OR ".join([
         f"({wc})" for wc in get_error_where_clauses(
@@ -337,7 +374,7 @@ def remove_file_table(spark: SparkSession, dbutils: DBUtils,
         Import entry for the specific file
     """
     delete_table(spark,
-                 import_entry.get_source_name(),
+                 import_entry.source,
                  import_entry.get_file_table_name())
     # Unmanaged table, so must delete the files separately
     dbutils.fs.rm(import_entry.get_file_table_folder_path(), True)

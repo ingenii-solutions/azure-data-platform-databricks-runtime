@@ -1,5 +1,7 @@
 from delta.tables import DeltaTable
+from os import path, rename
 from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
 from typing import List, Union
 
@@ -91,7 +93,7 @@ def handle_name(raw_name: str) -> str:
                    .replace("\n", "").replace("\t", "_").replace("=", "-")
 
 
-def schema_as_string(schema_list: list) -> str:
+def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
     used in SQL commands
@@ -100,20 +102,33 @@ def schema_as_string(schema_list: list) -> str:
     ----------
     schema_list : list
         The table schema, which requires both 'name' and 'data_type' keys
+    all_null: bool
+        Whether all the fields should be null, such as on tables where we
+        ingest individual files to test them
 
     Returns
     -------
     str
         The schema in SQL form
     """
+    def nullable(field_obj):
+        if all_null:
+            return ""
+        elif "not_null" in field_obj.get("tests", []):
+            return " NOT NULL"
+        elif field_obj.get("nullable", True):
+            return ""
+        else:
+            return " NOT NULL"
     return ", ".join([
-        f"{handle_name(s['name'])} {s['data_type']}"
+        f"`{handle_name(s['name']).strip('`')}` {s['data_type']}{nullable(s)}"
         for s in schema_list
     ])
 
 
 def read_file(spark: SparkSession, file_path: str,
-              table_schema: dict) -> DataFrame:
+              table_schema: dict, all_null: bool = False
+              ) -> DataFrame:
     """
     Read a character separated file and create a dataframe
     Reference: https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameReader.csv.html#pyspark.sql.DataFrameReader.csv)
@@ -135,7 +150,7 @@ def read_file(spark: SparkSession, file_path: str,
     return spark.read.csv(
         **table_schema.get("file_details", {}),
         path=file_path,
-        schema=schema_as_string(table_schema["columns"])
+        schema=schema_as_string(table_schema["columns"], all_null=True)
         )
 
 
@@ -154,7 +169,8 @@ def create_database(spark: SparkSession, database_name: str) -> None:
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,
-                 schema_list: list, folder_path: str) -> DeltaTable:
+                 schema_list: list, folder_path: str, all_null: bool = False
+                 ) -> DeltaTable:
     """
     Create an unmanaged Delta table at a defined location
 
@@ -170,6 +186,8 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
         The schema of the table to create
     folder_path : str
         The folder path to create the table files in
+    all_null: bool
+        Whether all column should be null, regardless of the schema
 
     Returns
     -------
@@ -179,7 +197,7 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
     spark.sql(" ".join([
         f"CREATE TABLE IF NOT EXISTS",
         f"{handle_name(database_name)}.{handle_name(table_name)}",
-        f"({schema_as_string(schema_list)})",
+        f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
     ]))
     return get_table(spark, folder_path)
@@ -244,7 +262,8 @@ def _difference_condition_string(all_columns: List[str],
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
     return " OR ".join([
-        f"deltatable.{handle_name(column)} <> dataframe.{handle_name(column)}"
+        f"deltatable.`{handle_name(column)}` <> "
+        f"dataframe.`{handle_name(column)}`"
         for column in all_columns
         if column not in merge_columns and not column.startswith("_")
     ])
@@ -381,3 +400,68 @@ def delete_table(spark: SparkSession, database_name: str, table_name: str
     full_name = f"{handle_name(database_name)}.{handle_name(table_name)}"
     spark.sql(f"DELETE FROM {full_name}")
     spark.sql(f"DROP TABLE IF EXISTS {full_name}")
+
+
+def rename_source_table(spark: SparkSession, data_provider: str,
+                        old_table_name: str, new_table_name: str) -> None:
+    """
+    Rename a source table. Updates the table files, the raw and archive files,
+    the entries in the metadata, and the file hashes
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    data_provider : str
+        The data provider, or database
+    old_table_name : str
+        The current name of the table
+    new_table_name : str
+        The name you want it changed to
+    """
+
+    # Move the files
+    for stage in ["raw", "archive", "source"]:
+        old_path = "/dbfs" + get_folder_path(
+            stage, data_provider, old_table_name)
+        new_path = "/dbfs" + get_folder_path(
+            stage, data_provider, new_table_name)
+        if path.exists(old_path):
+            rename(old_path, new_path)
+
+    new_table_path = "/dbfs" + get_folder_path(
+        "source", data_provider, new_table_name)
+    new_name = f"{data_provider}.{new_table_name.lower()}"
+
+    # Update the metadata
+    spark.sql(
+        f"DROP TABLE IF EXISTS {data_provider}.{old_table_name.lower()}")
+    spark.sql(
+        f"CREATE TABLE IF NOT EXISTS {new_name} "
+        f"USING DELTA LOCATION '{new_table_path}'")
+    spark.sql(
+        f"UPDATE orchestration.import_file "
+        f"SET table = '{new_table_name}' "
+        f"WHERE source = '{data_provider}' AND table = '{old_table_name}'")
+
+    # Update hashes
+    update_hash_df = \
+        spark.table("orchestration.import_file") \
+             .where(
+                 (col("source") == data_provider) &
+                 (col("table") == new_table_name)) \
+             .select("hash", "source", "table", "file_name").distinct() \
+             .withColumn("new_hash", hash("source", "table", "file_name")) \
+             .where(col("hash") != col("new_hash"))
+
+    DeltaTable.forName(spark, f"{new_name}") \
+        .alias("source").merge(
+            update_hash_df.alias("update"),
+            "source._hash = update.hash") \
+        .whenMatchedUpdate(set={"_hash": "update.new_hash"}).execute()
+    # Must update orchestration.import_file last in case something above fails
+    DeltaTable.forName(spark, "orchestration.import_file") \
+        .alias("source").merge(
+            update_hash_df.alias("update"),
+            "source.hash = update.hash") \
+        .whenMatchedUpdate(set={"hash": "update.new_hash"}).execute()

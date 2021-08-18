@@ -8,7 +8,7 @@
 * Base image: [databricksruntime/standard:7.x](https://hub.docker.com/layers/databricksruntime/standard/7.x/images/sha256-0d51d36c7b927858757fdc828c6a9fd5375b98ffcb186324060d0b334f5149d3?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Current Version: 0.3.0
+* Current Version: 0.3.2
 
 ## Overview
 
@@ -112,7 +112,7 @@ For each table all columns need to be specified, and each must have the followin
 The data pipeline looks to move data between several containers mounted from cloud storage. The mount points follow the pattern `/dbfs/mnt/<name>`:
 1. raw: Files from your data sources to be ingested should appear here, at the location `/dbfs/mnt/raw/<source name, e.g. Bloomberg>/<table name>/<filename>`. The filename should be unique within the source and table name to separate individual files to be ingested, for example daily files should have a date in the file name.
 1. archive: Once the data file has been ingested, it's moved to this container with a matching folder path.
-1. bronze (to be changed to 'source'): Hosts the files for the Delta tables of the data you've ingested. 
+1. source: Hosts the files for the Delta tables of the data you've ingested. 
 1. orchestration: Hosts the Import File Delta table, which contains details about each file ingestion, both to keep a history and to drive the data pipeline code.
 1. dbt: Contains the dbt configuration that holds source table information and tests.
 
@@ -130,3 +130,5 @@ If we upgrade the version of dbt used in the container while this fix is not mer
 | 0.1.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 <br> ingenii_databricks = 0.1.0 |
 | 0.2.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.2.0 |
 | 0.3.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.0 |
+| 0.3.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.1 <br> ingenii_data_engineering = 0.1.0 |
+| 0.3.2 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.1 <br> ingenii_data_engineering = 0.1.3 |
