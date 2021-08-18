@@ -100,7 +100,7 @@ def archive_file(import_entry: ImportFileEntry) -> None:
         "dbfs", "mnt", "archive", import_entry.source])
     if not path.exists(source_folder):
         mkdir(source_folder)
-    source_folder += f"/{import_entry.details['table']}"
+    source_folder += f"/{import_entry.table}"
     if not path.exists(source_folder):
         mkdir(source_folder)
 
@@ -122,15 +122,12 @@ def prepare_individual_table_yml(source_yml_path: str,
     import_entry : ImportFileEntry
         Import entry for the specific file
     """
-    table_def = get_table_def(source_yml_path,
-                              import_entry.details["source"],
-                              import_entry.details["table"], )
+    table_def = get_table_def(
+        source_yml_path, import_entry.source, import_entry.table)
 
     table_def["name"] = import_entry.get_file_table_name()
 
-    add_individual_table(source_yml_path,
-                         import_entry.details["source"],
-                         table_def)
+    add_individual_table(source_yml_path, import_entry.source, table_def)
 
 
 def revert_individual_table_yml(source_yml_path: str) -> None:
