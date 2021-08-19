@@ -139,20 +139,43 @@ class ImportFileEntry(OrchestrationTable):
                         (col("table") == table_name) &
                         (col("file_name") == file_name) &
                         (col("increment") == increment - 1)
-                        ).rdd.IsEmpty():
+                        ).rdd.isEmpty():
                     raise Exception(
                         f"Trying to create entry with increment {increment}, "
                         f"but entry with increment {increment - 1} does not "
                         f"exist yet!")
 
-                expected_path = "/" + "/".join([
-                    "mnt", "raw", source_name, table_name, file_name
+                expected_paths = [
+                    "/" + "/".join([
+                        "mnt", "raw", source_name, table_name, file_name
+                        ]),
+                    "/" + "/".join([
+                        "mnt", "archive", source_name, table_name, file_name
+                        ])
+                ]
+                if processed_file_name:
+                    expected_paths.extend([
+                        "/" + "/".join([
+                            "mnt", "raw",
+                            source_name, table_name, processed_file_name
+                            ]),
+                        "/" + "/".join([
+                            "mnt", "archive",
+                            source_name, table_name, processed_file_name
+                            ]),
+                        "/" + "/".join([
+                            "mnt", "archive", "before_pre_processing",
+                            source_name, table_name, file_name
+                            ])
                     ])
-                if not path.exists("/dbfs" + expected_path):
+                if not any([
+                    path.exists("/dbfs" + e_path)
+                    for e_path in expected_paths
+                        ]):
                     raise Exception(
                         f"Trying to create a new orchestration.import_file "
                         f"entry, but file does not exist! Can't see a file "
-                        f"at dbfs:{expected_path}")
+                        f"at any of {expected_paths}")
 
                 self.create_import_entry(
                     source_name, table_name, file_name, processed_file_name,
