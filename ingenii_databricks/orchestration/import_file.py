@@ -175,7 +175,7 @@ class ImportFileEntry(OrchestrationTable):
                     raise Exception(
                         f"Trying to create a new orchestration.import_file "
                         f"entry, but file does not exist! Can't see a file "
-                        f"at {expected_paths}")
+                        f"at any of {expected_paths}")
 
                 self.create_import_entry(
                     source_name, table_name, file_name, processed_file_name,
