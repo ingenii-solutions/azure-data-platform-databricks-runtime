@@ -126,12 +126,14 @@ def schema_as_string(schema_list: list, all_null=False) -> str:
     ])
 
 
-def read_file(spark: SparkSession, file_path: str,
-              table_schema: dict, all_null: bool = False
+def read_file(spark: SparkSession, file_path: str, table_schema: dict
               ) -> DataFrame:
     """
     Read a character separated file and create a dataframe
-    Reference: https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameReader.csv.html#pyspark.sql.DataFrameReader.csv)
+    Reference:
+        https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameReader.csv.html
+        https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameReader.json.html
+
 
     Parameters
     ----------
@@ -147,8 +149,16 @@ def read_file(spark: SparkSession, file_path: str,
     DataFrame
         Spark DataFrame of the data
     """
-    return spark.read.csv(
-        **table_schema.get("file_details", {}),
+    if table_schema.get("file_details", {}).get("type") == "json":
+        read_func = spark.read.json
+    else:
+        read_func = spark.read.csv
+    return read_func(
+        **{
+            k: v
+            for k, v in table_schema.get("file_details", {}).items()
+            if k != "type"
+        },
         path=file_path,
         schema=schema_as_string(table_schema["columns"], all_null=True)
         )
