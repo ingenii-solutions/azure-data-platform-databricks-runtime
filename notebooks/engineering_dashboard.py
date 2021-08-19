@@ -1,13 +1,10 @@
 # Databricks notebook source
-from ingenii_databricks.dashboard_utils import create_widgets, \
-    filtered_import_table
-
-# COMMAND ----------
-
+from ingenii_databricks.dashboard_utils import create_widgets
 create_widgets(spark, dbutils)
 
 # COMMAND ----------
 
+from ingenii_databricks.dashboard_utils import filtered_import_table
 display(filtered_import_table(spark, dbutils))
 
 # COMMAND ----------
@@ -28,3 +25,17 @@ display(filtered_import_table(spark, dbutils))
 #     "file_name": "20210514_RandomExample.csv",
 #     "increment": 0
 # })
+
+# COMMAND ----------
+
+# Script to ingest incomplete files
+# from pyspark.sql.functions import col
+# incomplete = spark.table("orchestration.import_file").where(col("date_completed").isNull())
+
+# for row in incomplete.collect():
+#   dbutils.notebook.run("/Shared/Ingenii Engineering/data_pipeline", 600, {
+#       "source": row.source,
+#       "table": row.table,
+#       "file_name": row.file_name,
+#       "increment": row.increment
+#   })
