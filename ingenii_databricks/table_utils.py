@@ -149,18 +149,35 @@ def read_file(spark: SparkSession, file_path: str, table_schema: dict
     DataFrame
         Spark DataFrame of the data
     """
-    if table_schema.get("file_details", {}).get("type") == "json":
+    file_details = table_schema.get("file_details", {})
+    schema_columns = table_schema["columns"]
+
+    if file_details.get("type") == "json":
         read_func = spark.read.json
     else:
         read_func = spark.read.csv
+
+        # File may not have all columns or in different order
+        if file_details.get("header"):
+            with open("/dbfs/" + file_path) as raw_file:
+                headers = raw_file.readline().strip() \
+                                  .split(file_details.get("sep", ","))
+
+            schema_map = {
+                field["name"].strip("`"): field
+                for field in table_schema["columns"]
+            }
+            schema_columns = [schema_map[h] for h in headers]
+
     return read_func(
         **{
             k: v
-            for k, v in table_schema.get("file_details", {}).items()
+            for k, v in file_details.items()
             if k != "type"
         },
         path=file_path,
-        schema=schema_as_string(table_schema["columns"], all_null=True)
+        schema=schema_as_string(schema_columns, all_null=True),
+        enforceSchema=False
         )
 
 
