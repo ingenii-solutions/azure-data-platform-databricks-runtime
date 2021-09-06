@@ -87,3 +87,6 @@ get-aad-token:
 
 upload-notebooks:
 	find notebooks -iname '*.py' | awk -F'/' '{print $$2}' | awk -F'.' '{print $$1}' | xargs -I {} databricks workspace import -l PYTHON notebooks/{}.py /Shared/Ingenii\ Engineering/{}
+
+get-package:
+	cp ../azure-data-platform-data-engineering/dist/ingenii_data_engineering-0.1.5-py3-none-any.whl packages/

@@ -1,4 +1,4 @@
 dbt==0.19.1
 #dbt-spark[PyHive]==0.19.1
-ingenii_data_engineering==0.1.4
+ingenii_data_engineering==0.1.5
 openpyxl==3.0.7
