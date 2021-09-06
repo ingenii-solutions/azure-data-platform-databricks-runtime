@@ -66,7 +66,7 @@ push-container:
 
 # Overall
 
-build: get-package build-package build-container
+build: build-package build-container
 
 push: push-container
 

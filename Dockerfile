@@ -30,5 +30,3 @@ RUN /databricks/conda/envs/dcs-minimal/bin/pip install dbt_spark-$DBT_SPARK_VERS
 # Ingenii
 COPY dist/ingenii_databricks-${PACKAGE_VERSION}-py3-none-any.whl .
 RUN /databricks/conda/envs/dcs-minimal/bin/pip install ingenii_databricks-${PACKAGE_VERSION}-py3-none-any.whl
-COPY packages/ingenii_data_engineering-0.1.5-py3-none-any.whl .
-RUN /databricks/conda/envs/dcs-minimal/bin/pip install ingenii_data_engineering-0.1.5-py3-none-any.whl
