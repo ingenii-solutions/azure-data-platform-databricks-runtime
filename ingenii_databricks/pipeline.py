@@ -77,7 +77,9 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
         import_entry.get_file_table_folder_path(),
         all_null=True)
 
-    file_data = read_file(spark, import_entry.get_file_path(), table_schema)
+    # File has been moved to the archive container to avoid processing in the
+    # raw container
+    file_data = read_file(spark, import_entry.get_archive_path(), table_schema)
 
     merge_dataframe_into_table(
         file_table, file_data, table_schema["join"]["column"],
