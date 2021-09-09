@@ -26,7 +26,7 @@ The data pipeline goes through 6 stages: new, staged, archived, cleaned, inserte
     1. If there isn't one already, an entry is created on the `orchestration.import_file` table to represent this particular file.
     1. As part of the entry, a unique hash is created using the combination of the source name, table name, and the file name. Later in the `Inserted` stage this hash is added to an extra column on the final tables so that data can always be tracked back to its source file.
 1. `Archived`:
-    1. Move the raw file to its respective `archive` path to avoid any processing in the `raw` container.
+    1. Move the raw file to its respective `archive` path for long-term storage and to avoid any processing in the `raw` container.
 1. `Staged`:
     1. If there is a pre-processing function allocated to the specific table, then the original file is moved to `archive/<source name>/<table name>/before_pre_process`, the pre-processing function applied, and the processed file takes the original's place at `raw/<source name>/<table name>`. Please see the [Example Data Engineering repository](https://github.com/ingenii-solutions/azure-data-platform-data-engineering-example) for more details about pre-processing scripts.
     1. Create a table to host the data for this individual file called `<source name>.<table name>_<hash>`. We set the schema using the definition set in the dbt schema.yml files.
