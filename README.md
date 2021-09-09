@@ -8,7 +8,7 @@
 * Base image: [databricksruntime/standard:7.x](https://hub.docker.com/layers/databricksruntime/standard/7.x/images/sha256-0d51d36c7b927858757fdc828c6a9fd5375b98ffcb186324060d0b334f5149d3?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Current Version: 0.3.4
+* Current Version: 0.4.0
 
 ## Overview
 
@@ -25,12 +25,12 @@ The data pipeline goes through 6 stages: new, staged, archived, cleaned, inserte
 1. `New`:
     1. If there isn't one already, an entry is created on the `orchestration.import_file` table to represent this particular file.
     1. As part of the entry, a unique hash is created using the combination of the source name, table name, and the file name. Later in the `Inserted` stage this hash is added to an extra column on the final tables so that data can always be tracked back to its source file.
+1. `Archived`:
+    1. Move the raw file to its respective `archive` path for long-term storage and to avoid any processing in the `raw` container.
 1. `Staged`:
     1. If there is a pre-processing function allocated to the specific table, then the original file is moved to `archive/<source name>/<table name>/before_pre_process`, the pre-processing function applied, and the processed file takes the original's place at `raw/<source name>/<table name>`. Please see the [Example Data Engineering repository](https://github.com/ingenii-solutions/azure-data-platform-data-engineering-example) for more details about pre-processing scripts.
     1. Create a table to host the data for this individual file called `<source name>.<table name>_<hash>`. We set the schema using the definition set in the dbt schema.yml files.
     1. Then, data from the file is loaded to this table.
-1. `Archived`:
-    1. Move the raw file to its respective `archive` path.
 1. `Cleaned`:
     1. Next, we run the tests defined in dbt against this table.
     1. If there are failing rows these are moved to a new table called `<source name>.<table name>_<hash>_<incremented number>`, and a new `orchestration.import_file` entry is created to represent this with a matching 'increment' value.
@@ -113,7 +113,7 @@ For each table all columns need to be specified, and each must have the followin
 
 The data pipeline looks to move data between several containers mounted from cloud storage. The mount points follow the pattern `/dbfs/mnt/<name>`:
 1. `raw`: Files from your data sources to be ingested should appear here, at the location `/dbfs/mnt/raw/<source name, e.g. Bloomberg>/<table name>/<filename>`. The filename should be unique within the source and table name to separate individual files to be ingested, for example daily files should have a date in the file name.
-1. `archive`: Once the data file has been ingested, it's moved to this container with a matching folder path to the raw contianer.
+1. `archive`: Raw files are moved here to a matching folder path to the raw container. This for any pre-processing required, ingesting the file to a staging Delta table, and long-term storage.
 1. `source`: Hosts the files for the Delta tables of the data you've ingested. 
 1. `orchestration`: Hosts the Import File Delta table, which contains details about each file ingestion, both to keep a history and to drive the data pipeline code.
 1. `dbt`: Contains the dbt configuration that holds source table information and tests.
@@ -130,11 +130,12 @@ If we upgrade the version of dbt used in the container while this fix is not mer
 
 | Image Version | Databricks Runtime | Added Packages |
 | --- | --- | --- |
-| 0.0.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 |
-| 0.1.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 <br> ingenii_databricks = 0.1.0 |
-| 0.2.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.2.0 |
-| 0.3.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.0 |
-| 0.3.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.1 <br> ingenii_data_engineering = 0.1.0 |
-| 0.3.2 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.2 <br> ingenii_data_engineering = 0.1.3 |
-| 0.3.3 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.1.4 |
+| 0.4.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.2.0 |
 | 0.3.4 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.1.5 |
+| 0.3.3 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.1.4 |
+| 0.3.2 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.2 <br> ingenii_data_engineering = 0.1.3 |
+| 0.3.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.1 <br> ingenii_data_engineering = 0.1.0 |
+| 0.3.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.0 |
+| 0.2.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.2.0 |
+| 0.1.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 <br> ingenii_databricks = 0.1.0 |
+| 0.0.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 |

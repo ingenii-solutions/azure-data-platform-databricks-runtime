@@ -77,7 +77,15 @@ import_entry = ImportFileEntry(spark, source_name=source,
 # COMMAND ----------
 
 if import_entry.is_stage("new"):
+    archive_file(import_entry)
+    import_entry.update_status("archived")
+
+# COMMAND ----------
+
+# Pre-process and stage the file
+if import_entry.is_stage("archived"):
     pre_process_file(import_entry)
+
     # Create individual table in the source database
     n_rows = create_file_table(spark, import_entry, table_schema)
     import_entry.update_rows_read(n_rows)
@@ -85,18 +93,11 @@ if import_entry.is_stage("new"):
 
 # COMMAND ----------
 
-# Archive the file
-if import_entry.is_stage("staged"):
-    archive_file(import_entry)
-    import_entry.update_status("archived")
-
-# COMMAND ----------
-
 # Create temporary .yml to identify this as a source, including tests
 # Run the tests
 # Move any failed rows: https://docs.getdbt.com/faqs/failed-tests
 # Run cleaning checks, moving offending entries to a review table
-if import_entry.is_stage("archived"):
+if import_entry.is_stage("staged"):
     prepare_individual_table_yml(table_schema["file_name"], import_entry)
 
     # Run tests and analyse the results
