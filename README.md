@@ -8,7 +8,7 @@
 * Base image: [databricksruntime/standard:7.x](https://hub.docker.com/layers/databricksruntime/standard/7.x/images/sha256-0d51d36c7b927858757fdc828c6a9fd5375b98ffcb186324060d0b334f5149d3?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Current Version: 0.4.0
+* Current Version: 0.4.1
 
 ## Overview
 
@@ -130,8 +130,9 @@ If we upgrade the version of dbt used in the container while this fix is not mer
 
 | Image Version | Databricks Runtime | Added Packages |
 | --- | --- | --- |
-| 0.4.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.2.0 |
-| 0.3.4 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.1.5 |
+| 0.4.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.1 <br> ingenii_data_engineering = 0.2.1 |
+| 0.4.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.0 <br> ingenii_data_engineering = 0.2.0 |
+| 0.3.4 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.4 <br> ingenii_data_engineering = 0.1.5 |
 | 0.3.3 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.3 <br> ingenii_data_engineering = 0.1.4 |
 | 0.3.2 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.2 <br> ingenii_data_engineering = 0.1.3 |
 | 0.3.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.3.1 <br> ingenii_data_engineering = 0.1.0 |

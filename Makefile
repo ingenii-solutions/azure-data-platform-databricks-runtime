@@ -89,4 +89,4 @@ upload-notebooks:
 	find notebooks -iname '*.py' | awk -F'/' '{print $$2}' | awk -F'.' '{print $$1}' | xargs -I {} databricks workspace import -l PYTHON notebooks/{}.py /Shared/Ingenii\ Engineering/{}
 
 get-package:
-	cp ../azure-data-platform-data-engineering/dist/ingenii_data_engineering-0.2.0-py3-none-any.whl packages/
+	cp ../azure-data-platform-data-engineering/dist/ingenii_data_engineering-0.2.1-py3-none-any.whl packages/
