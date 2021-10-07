@@ -92,7 +92,7 @@ def compare_schema_and_table(spark: SparkSession,
     ]
     missing_table_schema = [
         col for col in table_schema["columns"]
-        if col["name"] not in table_columns
+        if col["name"].strip("`") not in table_columns
     ]
     if missing_table_schema:
         add_columns_to_table(spark, import_entry.source, import_entry.table,
