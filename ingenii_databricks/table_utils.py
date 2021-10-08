@@ -222,7 +222,7 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
         The Delta table that has been created
     """
     spark.sql(" ".join([
-        f"CREATE TABLE IF NOT EXISTS",
+        "CREATE TABLE IF NOT EXISTS",
         f"{handle_name(database_name)}.{handle_name(table_name)}",
         f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
