@@ -12,7 +12,8 @@ from ingenii_databricks.pipeline import add_to_source_table, archive_file, \
     pre_process_file, remove_file_table, revert_individual_table_yml, \
     test_file_table
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.validation import check_parameters
+from ingenii_databricks.validation import check_parameters, \
+    compare_schema_and_table
 
 # COMMAND ----------
 
@@ -73,6 +74,9 @@ table_schema = source_details["tables"][table_name]
 import_entry = ImportFileEntry(spark, source_name=source,
                                table_name=table_name, file_name=file_name,
                                increment=increment)
+
+# Check that the current table schema will accept this new data
+compare_schema_and_table(spark, import_entry, table_schema)
 
 # COMMAND ----------
 

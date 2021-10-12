@@ -40,7 +40,7 @@ clean-tests:
 
 lint:
 	make clean-lint
-	flake8 --tee --output-file flake8_report.txt
+	flake8 --tee --output-file flake8_report.txt ingenii_databricks
 
 lint-convert:
 	flake8_junit flake8_report.txt flake8_report_junit.xml

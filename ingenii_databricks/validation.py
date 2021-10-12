@@ -1,4 +1,9 @@
+from pyspark.sql.session import SparkSession
+from pyspark.sql.utils import AnalysisException
 from typing import Union
+
+from .orchestration.import_file import ImportFileEntry
+from .table_utils import add_columns_to_table
 
 
 class ParameterException(Exception):
@@ -52,3 +57,43 @@ def check_parameters(source: Union[str, None], table_name: Union[str, None],
 
     if errors:
         raise ParameterException("\n".join(errors))
+
+
+def compare_schema_and_table(spark: SparkSession,
+                             import_entry: ImportFileEntry,
+                             table_schema: dict) -> None:
+    """
+    Check that the source table has all the necessary columns for the
+    individual file table, and if not, add those columns in. Also, check that
+    the types match.
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    import_entry : ImportFileEntry
+        Import entry for the specific file
+    table_schema : dict
+        Schema of the table for this specific file
+    """
+    try:
+        table_information = spark.sql(
+            f"DESCRIBE TABLE {import_entry.source}.{import_entry.table}"
+        ).collect()
+    except AnalysisException as e:
+        # Catch case when we haven't created the table yet
+        if "Table or view not found" in e.desc:
+            return
+        else:
+            raise e
+
+    table_columns = [
+        col.col_name for col in table_information if col.data_type
+    ]
+    missing_table_schema = [
+        col for col in table_schema["columns"]
+        if col["name"].strip("`") not in table_columns
+    ]
+    if missing_table_schema:
+        add_columns_to_table(spark, import_entry.source, import_entry.table,
+                             missing_table_schema)

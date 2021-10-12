@@ -222,12 +222,38 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
         The Delta table that has been created
     """
     spark.sql(" ".join([
-        f"CREATE TABLE IF NOT EXISTS",
+        "CREATE TABLE IF NOT EXISTS",
         f"{handle_name(database_name)}.{handle_name(table_name)}",
         f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
     ]))
     return get_table(spark, folder_path)
+
+
+def add_columns_to_table(spark: SparkSession,
+                         database_name: str, table_name: str,
+                         columns: List[dict]) -> None:
+    """
+    Add columns to an existing Delta table
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    database_name : str
+        The database to create the table in. Must already exist
+    table_name : str
+        The name of the table
+    columns : List[dict]
+        The schema of the columns to add
+
+    Returns
+    -------
+    """
+    spark.sql(" ".join([
+        f"ALTER TABLE {handle_name(database_name)}.{handle_name(table_name)}",
+        f"ADD COLUMNS ({schema_as_string(columns)})"
+    ]))
 
 
 def insert_dataframe_into_table(folder_path: str, dataframe: DataFrame
