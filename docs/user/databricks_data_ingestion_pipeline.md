@@ -22,6 +22,7 @@ The data pipeline used to ingest files into the [Ingenii Azure Data Platform](ht
 ## Mounted containers
 
 The data pipeline looks to move data between several containers mounted from cloud storage. The mount points follow the pattern `/dbfs/mnt/<name>`:
+
 1. `raw`: Files from your data sources to be ingested should appear here, at the location `/dbfs/mnt/raw/<source name, e.g. Bloomberg>/<table name>/<filename>`. The filename should be unique within the source and table name to separate individual files to be ingested, for example daily files should have a date in the file name.
 1. `archive`: Raw files are moved here to a matching folder path to the raw container. This for any pre-processing required, ingesting the file to a staging Delta table, and long-term storage.
 1. `source`: Hosts the files for the Delta tables of the data you've ingested. 
