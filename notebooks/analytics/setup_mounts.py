@@ -11,3 +11,9 @@ for container in ["orchestration", "source", "utilities"]:
         extra_configs=configs)
 
 # COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE DATABASE IF NOT EXISTS orchestration ;
+# MAGIC CREATE TABLE IF NOT EXISTS orchestration.import_file USING DELTA LOCATION '/mnt/orchestration/import_file' ;
+
+# COMMAND ----------
