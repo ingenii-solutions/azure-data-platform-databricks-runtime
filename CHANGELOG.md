@@ -1,3 +1,9 @@
+## 0.4.3
+
+IMPROVEMENTS:
+
+- **General:** Added pyodbc dependencies
+
 ## 0.3.0
 
 NEW FEATURES:
