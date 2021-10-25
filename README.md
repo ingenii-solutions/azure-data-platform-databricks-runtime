@@ -32,6 +32,7 @@ If we upgrade the version of dbt used in the container while this fix is not mer
 
 | Image Version | Databricks Runtime | Added Packages |
 | --- | --- | --- |
+| 0.4.3 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.2 <br> ingenii_data_engineering = 0.2.1 |
 | 0.4.2 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.2 <br> ingenii_data_engineering = 0.2.1 |
 | 0.4.1 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.1 <br> ingenii_data_engineering = 0.2.1 |
 | 0.4.0 | 7.x | dbt_core = 0.19.1 <br> dbt_pyspark = 0.19.1 (custom) <br> ingenii_databricks = 0.4.0 <br> ingenii_data_engineering = 0.2.0 |
