@@ -1,6 +1,6 @@
 # Ingenii Azure Data Platform - Databricks Data Ingestion Pipeline
 
-The data pipeline used to ingest files into the [Ingenii Azure Data Platform](https://ingenii.dev/) goes through 6 stages: new, archived, staged, cleaned, inserted, and completed. Once each stage is complete the timestamp is added to the relevant column in `orchestration.import_file` to show that stage is complete. This means that in the rare case of a failure, restarting the pipeline for a particular file's ingestion will pick up where the previous pipeline left off, rather than restarting the entire process.
+The data pipeline used to ingest files into the Ingenii Azure Data Platform solution goes through 6 stages: new, archived, staged, cleaned, inserted, and completed. Once each stage is complete the timestamp is added to the relevant column in `orchestration.import_file` to show that stage is complete. This means that in the rare case of a failure, restarting the pipeline for a particular file's ingestion will pick up where the previous pipeline left off, rather than restarting the entire process.
 
 1. `New`:
     1. If there isn't one already, an entry is created on the `orchestration.import_file` table to represent this particular file.
