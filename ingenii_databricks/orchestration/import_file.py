@@ -16,7 +16,7 @@ class ImportFileEntry(OrchestrationTable):
     Object to interact with the status of an individual file's status
     """
     orch_table = "import_file"
-    stages = ["new", "staged", "archived", "cleaned", "inserted", "completed"]
+    stages = ["new", "archived", "staged", "cleaned", "inserted", "completed"]
     table_schema = [
         StructField("hash", IntegerType(), nullable=False),
         StructField("source", StringType(), nullable=False),
@@ -549,7 +549,7 @@ class ImportFileEntry(OrchestrationTable):
             table_name=self.table,
             file_name=self.file_name,
             processed_file_name=self.processed_file_name,
-            increment=self.increment + 1, extra_stages=["staged", "archived"])
+            increment=self.increment + 1, extra_stages=["archived", "staged"])
 
     # Archive file
 
