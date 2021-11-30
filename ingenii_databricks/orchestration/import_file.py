@@ -10,13 +10,23 @@ from .base import OrchestrationTable
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
 
+class Stages:
+    NEW = "new"
+    ARCHIVED = "archived"
+    STAGED = "staged"
+    CLEANED = "cleaned"
+    INSERTED = "inserted"
+    COMPLETED = "completed"
 
 class ImportFileEntry(OrchestrationTable):
     """
     Object to interact with the status of an individual file's status
     """
     orch_table = "import_file"
-    stages = ["new", "archived", "staged", "cleaned", "inserted", "completed"]
+    stages = [
+        Stages.NEW, Stages.ARCHIVED, Stages.STAGED, 
+        Stages.CLEANED, Stages.INSERTED, Stages.COMPLETED
+    ]
     table_schema = [
         StructField("hash", IntegerType(), nullable=False),
         StructField("source", StringType(), nullable=False),
@@ -549,7 +559,8 @@ class ImportFileEntry(OrchestrationTable):
             table_name=self.table,
             file_name=self.file_name,
             processed_file_name=self.processed_file_name,
-            increment=self.increment + 1, extra_stages=["archived", "staged"])
+            increment=self.increment + 1, 
+            extra_stages=[Stages.ARCHIVED, Stages.STAGED])
 
     # Archive file
 
