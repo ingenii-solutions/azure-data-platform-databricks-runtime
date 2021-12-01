@@ -10,6 +10,7 @@ from .base import OrchestrationTable
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
 
+
 class Stages:
     NEW = "new"
     ARCHIVED = "archived"
@@ -20,6 +21,7 @@ class Stages:
 
     ORDER = [NEW, ARCHIVED, STAGED, CLEANED, INSERTED, COMPLETED]
 
+
 class ImportColumns:
     HASH = "hash"
     SOURCE = "source"
@@ -28,8 +30,8 @@ class ImportColumns:
     PROCESSED_FILE_NAME = "processed_file_name"
     INCREMENT = "increment"
     ROWS_READ = "rows_read"
-    _DATE_ROW_INSERTED = "_date_row_inserted"
-    _DATE_ROW_UPDATED = "_date_row_updated"
+    DATE_ROW_INSERTED = "_date_row_inserted"
+    DATE_ROW_UPDATED = "_date_row_updated"
 
     @staticmethod
     def date_stage(stage_name):
@@ -40,6 +42,7 @@ class ImportColumns:
             )
 
         return f"date_{stage_name}"
+
 
 class ImportFileEntry(OrchestrationTable):
     """
@@ -64,10 +67,10 @@ class ImportFileEntry(OrchestrationTable):
     ] + [
         StructField(ImportColumns.ROWS_READ, IntegerType(), nullable=True),
         StructField(
-            ImportColumns._DATE_ROW_INSERTED, TimestampType(), nullable=False
+            ImportColumns.DATE_ROW_INSERTED, TimestampType(), nullable=False
         ),
         StructField(
-            ImportColumns._DATE_ROW_UPDATED, TimestampType(), nullable=True
+            ImportColumns.DATE_ROW_UPDATED, TimestampType(), nullable=True
         )
     ]
     primary_keys = (
@@ -289,7 +292,7 @@ class ImportFileEntry(OrchestrationTable):
                     ImportColumns.FILE_NAME, ImportColumns.PROCESSED_FILE_NAME,
                     ImportColumns.INCREMENT,
                     ImportColumns.date_stage(Stages.NEW), 
-                    ImportColumns._DATE_ROW_INSERTED
+                    ImportColumns.DATE_ROW_INSERTED
                     ) + tuple(ImportColumns.date_stage(stage) for stage in extra_stages)
             ])).withColumn(ImportColumns.HASH, hash(*self.primary_keys))
 
@@ -365,7 +368,7 @@ class ImportFileEntry(OrchestrationTable):
                 (col(ImportColumns.INCREMENT) == self.increment),
                 {
                     ImportColumns.date_stage(status_name): dt,
-                    ImportColumns._DATE_ROW_UPDATED: dt
+                    ImportColumns.DATE_ROW_UPDATED: dt
                 })
 
             self.get_import_entry()
@@ -385,7 +388,7 @@ class ImportFileEntry(OrchestrationTable):
             (col(ImportColumns.INCREMENT) == self.increment),
             {
                 ImportColumns.ROWS_READ: lit(n_rows),
-                ImportColumns._DATE_ROW_UPDATED: lit(datetime.utcnow())
+                ImportColumns.DATE_ROW_UPDATED: lit(datetime.utcnow())
             })
 
         self.get_import_entry()
@@ -434,7 +437,7 @@ class ImportFileEntry(OrchestrationTable):
             (col(ImportColumns.INCREMENT) == self.increment),
             {
                 ImportColumns.PROCESSED_FILE_NAME: lit(processed_file_name),
-                ImportColumns._DATE_ROW_UPDATED: lit(datetime.utcnow())
+                ImportColumns.DATE_ROW_UPDATED: lit(datetime.utcnow())
             })
 
         self.get_import_entry()

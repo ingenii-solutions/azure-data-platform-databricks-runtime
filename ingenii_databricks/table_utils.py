@@ -384,13 +384,13 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                 set={
                     col_name: f"dataframe.{col_name}"
                     for col_name in dataframe.columns
-                    if col_name != ic._DATE_ROW_INSERTED  # Remains the same
+                    if col_name != ic.DATE_ROW_INSERTED  # Remains the same
                 }
             ) \
             .whenNotMatchedInsert(values={
                 col_name: f"dataframe.{col_name}"
                 for col_name in dataframe.columns
-                if col_name != ic._DATE_ROW_UPDATED  # _date_row_updated is null
+                if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
             })
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
