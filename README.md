@@ -22,11 +22,9 @@ For an overview of the data pipeline and the stages it goes through, please refe
 
 For reading files and testing data we use [dbt](https://www.getdbt.com/) as a framework. For an explanation on how we use dbt and how to set up your own data sources, please refer to the [Ingenii Data Engineering Example repository](https://github.com/ingenii-solutions/azure-data-platform-data-engineering-example).
 
-## dbt-spark
+## Contributions
 
-As part of our development, we discovered an issue in [dbt-spark](https://github.com/dbt-labs/dbt-spark) around retrying when connections fail. At time of writing we have [opened a pull request for this fix](https://github.com/dbt-labs/dbt-spark/pull/194), but it is not yet merged. In the meantime, we contain in this repository our own version of dbt-spark (version 0.19.1) in the `dbt-spark` folder, which we install as part of the container runtime creation.
-
-If we upgrade the version of dbt used in the container while this fix is not merged we will have to upgrade our version of dbt-spark to match, which will involve updating the dbt-spark folder and re-applying our fix.
+- [dbt-spark](https://github.com/dbt-labs/dbt-spark) - [retrying when any connections fail](https://github.com/dbt-labs/dbt-spark/pull/194)
 
 ## Versions Matrix
 
