@@ -24,8 +24,8 @@ class ImportColumns:
     DATE_ROW_INSERTED = "_date_row_inserted"
     DATE_ROW_UPDATED = "_date_row_updated"
 
-    @staticmethod
-    def date_stage(stage_name):
+    @classmethod
+    def date_stage(cls, stage_name):
         if stage_name not in Stages.ORDER:
             raise Exception(
                 f"Stage not recognised: {stage_name}. "
