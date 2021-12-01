@@ -5,6 +5,7 @@ from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
 from typing import List, Union
 
+from ingenii_databricks.orchestration import ImportColumns as ic
 
 def get_folder_path(stage: str, source_name: str, table_name: str,
                     hash_identifier=None) -> str:
@@ -383,13 +384,13 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                 set={
                     col_name: f"dataframe.{col_name}"
                     for col_name in dataframe.columns
-                    if col_name != "_date_row_inserted"  # Remains the same
+                    if col_name != ic._DATE_ROW_INSERTED  # Remains the same
                 }
             ) \
             .whenNotMatchedInsert(values={
                 col_name: f"dataframe.{col_name}"
                 for col_name in dataframe.columns
-                if col_name != "_date_row_updated"  # _date_row_updated is null
+                if col_name != ic._DATE_ROW_UPDATED  # _date_row_updated is null
             })
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
@@ -494,27 +495,24 @@ def rename_source_table(spark: SparkSession, data_provider: str,
         f"USING DELTA LOCATION '{new_table_path}'")
     spark.sql(
         f"UPDATE orchestration.import_file "
-        f"SET table = '{new_table_name}' "
-        f"WHERE source = '{data_provider}' AND table = '{old_table_name}'")
+        f"SET {ic.TABLE} = '{new_table_name}' "
+        f"WHERE {ic.SOURCE} = '{data_provider}' "
+        f"AND {ic.TABLE} = '{old_table_name}'")
 
     # Update hashes
     update_hash_df = \
         spark.table("orchestration.import_file") \
              .where(
-                 (col("source") == data_provider) &
-                 (col("table") == new_table_name)) \
-             .select("hash", "source", "table", "file_name").distinct() \
-             .withColumn("new_hash", hash("source", "table", "file_name")) \
-             .where(col("hash") != col("new_hash"))
+                 (col(ic.SOURCE) == data_provider) &
+                 (col(ic.TABLE) == new_table_name)) \
+             .select(ic.HASH, ic.SOURCE, ic.TABLE, ic.FILE_NAME).distinct() \
+             .withColumn("new_hash", hash(ic.SOURCE, ic.TABLE, ic.FILE_NAME)) \
+             .where(col(ic.HASH) != col("new_hash"))
 
-    DeltaTable.forName(spark, f"{new_name}") \
-        .alias("source").merge(
-            update_hash_df.alias("update"),
-            "source._hash = update.hash") \
+    DeltaTable.forName(spark, f"{new_name}").alias("source") \
+        .merge(update_hash_df.alias("update"), "source._hash = update.hash") \
         .whenMatchedUpdate(set={"_hash": "update.new_hash"}).execute()
     # Must update orchestration.import_file last in case something above fails
-    DeltaTable.forName(spark, "orchestration.import_file") \
-        .alias("source").merge(
-            update_hash_df.alias("update"),
-            "source.hash = update.hash") \
+    DeltaTable.forName(spark, "orchestration.import_file").alias("source") \
+        .merge(update_hash_df.alias("update"), "source.hash = update.hash") \
         .whenMatchedUpdate(set={"hash": "update.new_hash"}).execute()

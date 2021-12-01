@@ -2,8 +2,8 @@ from pyspark.sql.session import SparkSession
 from pyspark.sql.utils import AnalysisException
 from typing import Union
 
-from .orchestration.import_file import ImportFileEntry
-from .table_utils import add_columns_to_table
+from ingenii_databricks.orchestration import ImportFileEntry
+from ingenii_databricks.table_utils import add_columns_to_table
 
 
 class ParameterException(Exception):

@@ -51,15 +51,24 @@ class ImportFileEntry(OrchestrationTable):
         StructField(ImportColumns.SOURCE, StringType(), nullable=False),
         StructField(ImportColumns.TABLE, StringType(), nullable=False),
         StructField(ImportColumns.FILE_NAME, StringType(), nullable=False),
-        StructField(ImportColumns.PROCESSED_FILE_NAME, StringType(), nullable=True),
+        StructField(
+            ImportColumns.PROCESSED_FILE_NAME, StringType(), nullable=True
+        ),
         StructField(ImportColumns.INCREMENT, IntegerType(), nullable=False)
     ] + [
-        StructField(ImportColumns.date_stage(s), TimestampType(), nullable=bool(s != Stages.NEW))
+        StructField(
+            ImportColumns.date_stage(s), TimestampType(), 
+            nullable=bool(s != Stages.NEW)
+        )
         for s in Stages.ORDER
     ] + [
         StructField(ImportColumns.ROWS_READ, IntegerType(), nullable=True),
-        StructField(ImportColumns._DATE_ROW_INSERTED, TimestampType(), nullable=False),
-        StructField(ImportColumns._DATE_ROW_UPDATED, TimestampType(), nullable=True)
+        StructField(
+            ImportColumns._DATE_ROW_INSERTED, TimestampType(), nullable=False
+        ),
+        StructField(
+            ImportColumns._DATE_ROW_UPDATED, TimestampType(), nullable=True
+        )
     ]
     primary_keys = (
         ImportColumns.SOURCE, ImportColumns.TABLE, ImportColumns.FILE_NAME
