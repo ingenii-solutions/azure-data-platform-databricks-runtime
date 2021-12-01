@@ -19,14 +19,6 @@ RUN /databricks/conda/envs/dcs-minimal/bin/pip install -r requirements.txt
 # data build tool (DBT)
 RUN ln -s /databricks/conda/envs/dcs-minimal/bin/dbt /usr/local/bin/dbt
 
-# Requirements as we have our own dbt-spark
-RUN /databricks/conda/envs/dcs-minimal/bin/pip install "PyHive[hive]>=0.6.0,<0.7.0"
-RUN /databricks/conda/envs/dcs-minimal/bin/pip install "thrift>=0.11.0,<0.12.0"
-
-# Our dbt-spark
-COPY packages/dbt_spark-$DBT_SPARK_VERSION-py3-none-any.whl .
-RUN /databricks/conda/envs/dcs-minimal/bin/pip install dbt_spark-$DBT_SPARK_VERSION-py3-none-any.whl
-
 # Ingenii
 COPY dist/ingenii_databricks-${PACKAGE_VERSION}-py3-none-any.whl .
 RUN /databricks/conda/envs/dcs-minimal/bin/pip install ingenii_databricks-${PACKAGE_VERSION}-py3-none-any.whl
