@@ -5,7 +5,8 @@ from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
 from typing import List, Union
 
-from ingenii_databricks.orchestration import ImportColumns as ic
+from ingenii_databricks.enums import ImportColumns as ic
+
 
 def get_folder_path(stage: str, source_name: str, table_name: str,
                     hash_identifier=None) -> str:
