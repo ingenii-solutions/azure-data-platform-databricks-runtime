@@ -5,7 +5,6 @@ ENV LANG C.UTF-8
 ENV PYTHONUNBUFFERED 1
 
 ARG PACKAGE_VERSION
-ARG DBT_SPARK_VERSION
 
 RUN apt-get update && \
         apt-get install -yq libsasl2-dev build-essential g++ unixodbc-dev && \

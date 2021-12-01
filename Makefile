@@ -58,7 +58,6 @@ qa:
 build-container:
 	docker build \
 	--build-arg PACKAGE_VERSION=$(VERSION) \
-	--build-arg DBT_SPARK_VERSION=$(shell cat requirements.txt | grep "dbt==" | awk -F'==' '{ print $$2 }') \
 	-t $(REGISTRY)/$(REPOSITORY):$(VERSION) .
 
 push-container:
