@@ -84,7 +84,8 @@ class ImportFileEntry(OrchestrationTable):
     def __init__(self, spark: SparkSession, row_hash: int = None,
                  source_name: str = None, table_name: str = None,
                  file_name: str = None, processed_file_name: str = None,
-                 increment: int = 0, extra_stages: List[str] = []):
+                 increment: int = 0, extra_stages: List[str] = [],
+                 create_if_missing: bool = True):
         """
         Create an ImportFileEntry instance for a specific file to be ingested
 
@@ -144,51 +145,17 @@ class ImportFileEntry(OrchestrationTable):
                 (col(ImportColumns.FILE_NAME) == file_name) &
                 (col(ImportColumns.INCREMENT) == increment))
             if import_entry.rdd.isEmpty():
+
+                if not create_if_missing:
+                    raise Exception(
+                        f"Unable to find entry with details "
+                        f"{ImportColumns.SOURCE} = '{source_name}', "
+                        f"{ImportColumns.TABLE} = '{table_name}', "
+                        f"{ImportColumns.FILE_NAME} = '{file_name}', "
+                        f"and {ImportColumns.INCREMENT} = {increment}"
+                    )
+
                 # Create new entry
-
-                # Catch if wrong 'increment' value used
-                if increment > 0 and self.get_import_table_df().where(
-                        (col(ImportColumns.SOURCE) == source_name) &
-                        (col(ImportColumns.TABLE) == table_name) &
-                        (col(ImportColumns.FILE_NAME) == file_name) &
-                        (col(ImportColumns.INCREMENT) == increment - 1)
-                        ).rdd.isEmpty():
-                    raise Exception(
-                        f"Trying to create entry with increment {increment}, "
-                        f"but entry with increment {increment - 1} does not "
-                        f"exist yet!")
-
-                expected_paths = [
-                    "/" + "/".join([
-                        "mnt", "raw", source_name, table_name, file_name
-                        ]),
-                    "/" + "/".join([
-                        "mnt", "archive", source_name, table_name, file_name
-                        ])
-                ]
-                if processed_file_name:
-                    expected_paths.extend([
-                        "/" + "/".join([
-                            "mnt", "raw",
-                            source_name, table_name, processed_file_name
-                            ]),
-                        "/" + "/".join([
-                            "mnt", "archive",
-                            source_name, table_name, processed_file_name
-                            ]),
-                        "/" + "/".join([
-                            "mnt", "archive", "before_pre_processing",
-                            source_name, table_name, file_name
-                            ])
-                    ])
-                if not any([
-                    path.exists("/dbfs" + e_path)
-                    for e_path in expected_paths
-                        ]):
-                    raise Exception(
-                        f"Trying to create a new orchestration.import_file "
-                        f"entry, but file does not exist! Can't see a file "
-                        f"at any of {expected_paths}")
 
                 self.create_import_entry(
                     source_name, table_name, file_name, processed_file_name,
@@ -247,6 +214,45 @@ class ImportFileEntry(OrchestrationTable):
             ingested, so we can use this to populate the 'stage' and 'archive'
             stages
         """
+        # Catch if wrong 'increment' value used
+        if increment > 0 and self.get_import_table_df().where(
+                (col(ImportColumns.SOURCE) == source_name) &
+                (col(ImportColumns.TABLE) == table_name) &
+                (col(ImportColumns.FILE_NAME) == file_name) &
+                (col(ImportColumns.INCREMENT) == increment - 1)
+                ).rdd.isEmpty():
+            raise Exception(
+                f"Trying to create entry with increment {increment}, "
+                f"but entry with increment {increment - 1} does not "
+                f"exist yet!")
+
+        # Check that the file we want to ingest exists
+        def mnt_path(*args):
+            return "/".join(["", "mnt", *args])
+
+        expected_paths = [
+            mnt_path("raw", source_name, table_name, file_name),
+            mnt_path("archive", source_name, table_name, file_name),
+        ]
+        if processed_file_name:
+            expected_paths.extend([
+                mnt_path("raw",
+                         source_name, table_name, processed_file_name),
+                mnt_path("archive",
+                         source_name, table_name, processed_file_name),
+                mnt_path("archive", "before_pre_processing",
+                         source_name, table_name, file_name),
+            ])
+        if not any([
+            path.exists("/dbfs" + e_path)
+            for e_path in expected_paths
+                ]):
+            raise Exception(
+                f"Trying to create a new orchestration.import_file "
+                f"entry, but file does not exist! Can't see a file "
+                f"at any of {expected_paths}")
+
+        # Create the entry
         datetime_now = datetime.utcnow()
         new_entry = self.spark.createDataFrame(
             data=[(
@@ -283,12 +289,20 @@ class ImportFileEntry(OrchestrationTable):
 
     def get_import_entry(self) -> None:
         """
-        Update this entry with the latest details
+        Given the hash and increment, find the entry
         """
-        self._details = self.get_import_table_df().where(
+        result = self.get_import_table_df().where(
             (col(ImportColumns.HASH) == self.hash) &
             (col(ImportColumns.INCREMENT) == self.increment)
-        ).first().asDict()
+        )
+        if result.rdd.isEmpty():
+            raise Exception(
+                f"Unable to find orchestration.import_file entry with "
+                f"{ImportColumns.HASH} = {self.hash} and "
+                f"{ImportColumns.INCREMENT} = {self.increment}"
+            )
+
+        self._details = result.first().asDict()
 
     # Utilities
 

@@ -1,4 +1,4 @@
-from os import remove
+from os.path import exists
 from pyspark.dbutils import DBUtils
 from pyspark.sql.session import SparkSession
 
@@ -41,7 +41,7 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
         If the data has already been ingested to the main table
     """
     import_entry = ImportFileEntry(
-        row_hash=row_hash,
+        spark=spark, row_hash=row_hash,
         source_name=source_name, table_name=table_name, file_name=file_name,
         increment=increment
     )
@@ -61,10 +61,13 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
 
     if current_stage >= Stages.ARCHIVED:
         # If archived, remove file from there
-        remove("/dbfs" + import_entry.get_archive_path())
+        file_path = import_entry.get_archive_path()
     else:
         # If raw, remove file from there
-        remove("/dbfs" + import_entry.get_file_path())
+        file_path = import_entry.get_file_path()
+
+    if exists("/dbfs" + file_path):
+        dbutils.fs.rm(file_path, True)
 
     # Remove orchestration.import_file entry
     import_entry.delete_entry()
