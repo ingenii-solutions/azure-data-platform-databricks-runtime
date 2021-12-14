@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from ingenii_databricks.enums import StageObj, Stages
+from ingenii_databricks.enums import Stages
 
 
 class TestStagesEnum(TestCase):
