@@ -26,7 +26,7 @@ def create_widgets(spark: SparkSession, dbutils: DBUtils) -> None:
         defaultValue="--",
         choices=["--"] + [
             s.source for s in orch_df.select("source").distinct()
-                                     .sort(col("source").asc).collect()
+                                     .sort("source").collect()
         ],
         label="Source")
     dbutils.widgets.dropdown(
@@ -34,7 +34,7 @@ def create_widgets(spark: SparkSession, dbutils: DBUtils) -> None:
         defaultValue="--",
         choices=["--"] + [
             t.table for t in orch_df.select("table").distinct()
-                                    .sort(col("table").asc).collect()
+                                    .sort("table").collect()
         ],
         label="Table")
 

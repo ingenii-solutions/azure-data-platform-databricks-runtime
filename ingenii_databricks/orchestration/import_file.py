@@ -7,6 +7,7 @@ from pyspark.sql.types import StructField, StructType, IntegerType, \
 from typing import List
 
 from .base import OrchestrationTable
+from ingenii_databricks.enums import ImportColumns, Stages
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
 
@@ -16,58 +17,68 @@ class ImportFileEntry(OrchestrationTable):
     Object to interact with the status of an individual file's status
     """
     orch_table = "import_file"
-    stages = ["new", "archived", "staged", "cleaned", "inserted", "completed"]
     table_schema = [
-        StructField("hash", IntegerType(), nullable=False),
-        StructField("source", StringType(), nullable=False),
-        StructField("table", StringType(), nullable=False),
-        StructField("file_name", StringType(), nullable=False),
-        StructField("processed_file_name", StringType(), nullable=True),
-        StructField("increment", IntegerType(), nullable=False)
+        StructField(ImportColumns.HASH, IntegerType(), nullable=False),
+        StructField(ImportColumns.SOURCE, StringType(), nullable=False),
+        StructField(ImportColumns.TABLE, StringType(), nullable=False),
+        StructField(ImportColumns.FILE_NAME, StringType(), nullable=False),
+        StructField(
+            ImportColumns.PROCESSED_FILE_NAME, StringType(), nullable=True
+        ),
+        StructField(ImportColumns.INCREMENT, IntegerType(), nullable=False)
     ] + [
-        StructField("date_" + s, TimestampType(), nullable=bool(s != "new"))
-        for s in stages
+        StructField(
+            ImportColumns.date_stage(s), TimestampType(),
+            nullable=bool(s != Stages.NEW)
+        )
+        for s in Stages.ORDER
     ] + [
-        StructField("rows_read", IntegerType(), nullable=True),
-        StructField("_date_row_inserted", TimestampType(), nullable=False),
-        StructField("_date_row_updated", TimestampType(), nullable=True)
+        StructField(ImportColumns.ROWS_READ, IntegerType(), nullable=True),
+        StructField(
+            ImportColumns.DATE_ROW_INSERTED, TimestampType(), nullable=False
+        ),
+        StructField(
+            ImportColumns.DATE_ROW_UPDATED, TimestampType(), nullable=True
+        )
     ]
-    primary_keys = ["source", "table", "file_name"]
+    primary_keys = (
+        ImportColumns.SOURCE, ImportColumns.TABLE, ImportColumns.FILE_NAME
+    )
 
     _details = {}
     deleted = False
 
     @property
     def source(self):
-        return self._details["source"]
+        return self._details[ImportColumns.SOURCE]
 
     @property
     def table(self):
-        return self._details["table"]
+        return self._details[ImportColumns.TABLE]
 
     @property
     def file_name(self):
-        return self._details["file_name"]
+        return self._details[ImportColumns.FILE_NAME]
 
     @property
     def processed_file_name(self):
-        return self._details["processed_file_name"]
+        return self._details[ImportColumns.PROCESSED_FILE_NAME]
 
     @property
     def hash(self):
-        return self._details["hash"]
+        return self._details[ImportColumns.HASH]
 
     @hash.setter
     def hash(self, value):
-        self._details["hash"] = value
+        self._details[ImportColumns.HASH] = value
 
     @property
     def increment(self):
-        return self._details["increment"]
+        return self._details[ImportColumns.INCREMENT]
 
     @increment.setter
     def increment(self, value):
-        self._details["increment"] = value
+        self._details[ImportColumns.INCREMENT] = value
 
     def __init__(self, spark, row_hash=None, source_name=None,
                  table_name=None, file_name=None, processed_file_name=None,
@@ -126,19 +137,19 @@ class ImportFileEntry(OrchestrationTable):
                 ]))
         else:
             import_entry = self.get_import_table_df().where(
-                (col("source") == source_name) &
-                (col("table") == table_name) &
-                (col("file_name") == file_name) &
-                (col("increment") == increment))
+                (col(ImportColumns.SOURCE) == source_name) &
+                (col(ImportColumns.TABLE) == table_name) &
+                (col(ImportColumns.FILE_NAME) == file_name) &
+                (col(ImportColumns.INCREMENT) == increment))
             if import_entry.rdd.isEmpty():
                 # Create new entry
 
                 # Catch if wrong 'increment' value used
                 if increment > 0 and self.get_import_table_df().where(
-                        (col("source") == source_name) &
-                        (col("table") == table_name) &
-                        (col("file_name") == file_name) &
-                        (col("increment") == increment - 1)
+                        (col(ImportColumns.SOURCE) == source_name) &
+                        (col(ImportColumns.TABLE) == table_name) &
+                        (col(ImportColumns.FILE_NAME) == file_name) &
+                        (col(ImportColumns.INCREMENT) == increment - 1)
                         ).rdd.isEmpty():
                     raise Exception(
                         f"Trying to create entry with increment {increment}, "
@@ -245,17 +256,23 @@ class ImportFileEntry(OrchestrationTable):
             schema=StructType([
                 f for f in self.table_schema
                 if f.name in (
-                    "source", "table", "file_name", "processed_file_name",
-                    "increment",
-                    "date_new", "_date_row_inserted"
-                    ) + tuple("date_" + stage for stage in extra_stages)
-            ])).withColumn("hash", hash("source", "table", "file_name"))
+                    ImportColumns.SOURCE, ImportColumns.TABLE,
+                    ImportColumns.FILE_NAME, ImportColumns.PROCESSED_FILE_NAME,
+                    ImportColumns.INCREMENT,
+                    ImportColumns.date_stage(Stages.NEW),
+                    ImportColumns.DATE_ROW_INSERTED
+                    ) + tuple(
+                        ImportColumns.date_stage(s) for s in extra_stages
+                    )
+            ])).withColumn(ImportColumns.HASH, hash(*self.primary_keys))
 
         self.get_import_table().alias("target").merge(
                 new_entry.alias("new_data"),
-                "target.hash = new_data.hash AND "
-                "target.increment = new_data.increment"
-                ) \
+                " AND ".join([
+                    f"target.{col} = new_data.{col}"
+                    for col in (ImportColumns.HASH, ImportColumns.INCREMENT)
+                ])
+            ) \
             .whenNotMatchedInsert(values={
                 c: f"new_data.{c}" for c in new_entry.columns}) \
             .execute()
@@ -267,7 +284,8 @@ class ImportFileEntry(OrchestrationTable):
         Update this entry with the latest details
         """
         self._details = self.get_import_table_df().where(
-            (col("hash") == self.hash) & (col("increment") == self.increment)
+            (col(ImportColumns.HASH) == self.hash) &
+            (col(ImportColumns.INCREMENT) == self.increment)
         ).first().asDict()
 
     # Utilities
@@ -284,8 +302,8 @@ class ImportFileEntry(OrchestrationTable):
         if self.deleted:
             return "deleted"
         return [
-            s for s in self.stages
-            if self._details["date_" + s] is not None
+            s for s in Stages.ORDER
+            if self._details[ImportColumns.date_stage(s)] is not None
         ][-1]
 
     def is_stage(self, stage_to_compare: str) -> bool:
@@ -315,14 +333,14 @@ class ImportFileEntry(OrchestrationTable):
         """
         self.get_import_entry()
 
-        if self._details["date_" + status_name] is None:
+        if self._details[ImportColumns.date_stage(status_name)] is None:
             dt = lit(datetime.utcnow())
             self.get_import_table().update(
-                (col("hash") == self.hash) &
-                (col("increment") == self.increment),
+                (col(ImportColumns.HASH) == self.hash) &
+                (col(ImportColumns.INCREMENT) == self.increment),
                 {
-                    "date_" + status_name: dt,
-                    "_date_row_updated": dt
+                    ImportColumns.date_stage(status_name): dt,
+                    ImportColumns.DATE_ROW_UPDATED: dt
                 })
 
             self.get_import_entry()
@@ -338,10 +356,11 @@ class ImportFileEntry(OrchestrationTable):
             The number of rows to update the entry with
         """
         self.get_import_table().update(
-            (col("hash") == self.hash) & (col("increment") == self.increment),
+            (col(ImportColumns.HASH) == self.hash) &
+            (col(ImportColumns.INCREMENT) == self.increment),
             {
-                "rows_read": lit(n_rows),
-                "_date_row_updated": lit(datetime.utcnow())
+                ImportColumns.ROWS_READ: lit(n_rows),
+                ImportColumns.DATE_ROW_UPDATED: lit(datetime.utcnow())
             })
 
         self.get_import_entry()
@@ -386,10 +405,11 @@ class ImportFileEntry(OrchestrationTable):
             The file name to add to the entry
         """
         self.get_import_table().update(
-            (col("hash") == self.hash) & (col("increment") == self.increment),
+            (col(ImportColumns.HASH) == self.hash) &
+            (col(ImportColumns.INCREMENT) == self.increment),
             {
-                "processed_file_name": lit(processed_file_name),
-                "_date_row_updated": lit(datetime.utcnow())
+                ImportColumns.PROCESSED_FILE_NAME: lit(processed_file_name),
+                ImportColumns.DATE_ROW_UPDATED: lit(datetime.utcnow())
             })
 
         self.get_import_entry()
@@ -399,7 +419,7 @@ class ImportFileEntry(OrchestrationTable):
         Delete the entry and don't continue with the file
         """
         self.deleted = True
-        self.get_import_table().delete(f"hash = {self.hash}")
+        self.get_import_table().delete(f"{ImportColumns.HASH} = {self.hash}")
 
     # File table
 
@@ -549,7 +569,8 @@ class ImportFileEntry(OrchestrationTable):
             table_name=self.table,
             file_name=self.file_name,
             processed_file_name=self.processed_file_name,
-            increment=self.increment + 1, extra_stages=["archived", "staged"])
+            increment=self.increment + 1,
+            extra_stages=[Stages.ARCHIVED, Stages.STAGED])
 
     # Archive file
 
