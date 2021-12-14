@@ -11,12 +11,40 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
                  hash: int = None,
                  source_name: str = None, table_name: str = None,
                  file_name: str = None, increment: int = 0):
+    """
+    If a file ingestion is no longer needed, remove the partially ingested data
+    and any other part of the ingestion
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    dbutils : DBUtils
+        [description]
+    hash : int, optional
+        The hash for the unique combination of source name, table name,
+            and file name, by default None
+    source_name : str, optional
+            The name of the source the data is coming from, by default None
+    table_name : str, optional
+        The name of the table the data belongs to, by default None
+    file_name : str, optional
+        The name of the file the data is contained in, by default None
+    increment : int, optional
+        The increment of the 'attempt' to ingest the date, by default 0.
+        For each cleaning stage, if there are errors a new entry is added
+        with an incremented value
+
+    Raises
+    ------
+    Exception
+        If the data has already been ingested to the main table
+    """
     import_entry = ImportFileEntry(
         hash=hash,
         source_name=source_name, table_name=table_name, file_name=file_name,
         increment=increment
     )
-
     current_stage = import_entry.get_current_stage()
 
     # Check if file has been ingested to the main table
