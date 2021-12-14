@@ -8,7 +8,7 @@ from ingenii_databricks.pipeline import remove_file_table
 
 
 def abandon_file(spark: SparkSession, dbutils: DBUtils,
-                 hash: int = None,
+                 row_hash: int = None,
                  source_name: str = None, table_name: str = None,
                  file_name: str = None, increment: int = 0):
     """
@@ -21,9 +21,9 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
         Object for interacting with Delta tables
     dbutils : DBUtils
         [description]
-    hash : int, optional
+    row_hash : int, optional
         The hash for the unique combination of source name, table name,
-            and file name, by default None
+        and file name, by default None
     source_name : str, optional
             The name of the source the data is coming from, by default None
     table_name : str, optional
@@ -41,7 +41,7 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
         If the data has already been ingested to the main table
     """
     import_entry = ImportFileEntry(
-        hash=hash,
+        row_hash=row_hash,
         source_name=source_name, table_name=table_name, file_name=file_name,
         increment=increment
     )
