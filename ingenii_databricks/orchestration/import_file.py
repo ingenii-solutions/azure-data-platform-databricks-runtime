@@ -2,6 +2,7 @@ from datetime import datetime
 from delta.tables import DeltaTable
 from os import path
 from pyspark.sql.functions import col, hash, lit
+from pyspark.sql.session import SparkSession
 from pyspark.sql.types import StructField, StructType, IntegerType, \
     StringType, TimestampType
 from typing import List
@@ -80,9 +81,10 @@ class ImportFileEntry(OrchestrationTable):
     def increment(self, value):
         self._details[ImportColumns.INCREMENT] = value
 
-    def __init__(self, spark, row_hash=None, source_name=None,
-                 table_name=None, file_name=None, processed_file_name=None,
-                 increment=0, extra_stages=[]):
+    def __init__(self, spark: SparkSession, row_hash: int = None,
+                 source_name: str = None, table_name: str = None,
+                 file_name: str = None, processed_file_name: str = None,
+                 increment: int = 0, extra_stages: List[str] = []):
         """
         Create an ImportFileEntry instance for a specific file to be ingested
 
