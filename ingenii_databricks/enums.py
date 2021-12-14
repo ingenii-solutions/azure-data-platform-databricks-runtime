@@ -1,12 +1,56 @@
+class StageObj:
+    """ Base object to enable comparisons """
+
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    @staticmethod
+    def _check_type(other):
+        if not isinstance(other, (StageObj, str)):
+            raise Exception(
+                f"Comparison must be to another StageObj object or string, "
+                f"not {type(other)}")
+
+    def __eq__(self, other):
+        self._check_type(other)
+        return self.name == other
+
+    def __ne__(self, other):
+        self._check_type(other)
+        return not self.__eq__(other)
+
+    def __lt__(self, other):
+        self._check_type(other)
+        return Stages.ORDER.index(self) < Stages.ORDER.index(other)
+
+    def __le__(self, other):
+        self._check_type(other)
+        return Stages.ORDER.index(self) <= Stages.ORDER.index(other)
+
+    def __gt__(self, other):
+        self._check_type(other)
+        return Stages.ORDER.index(self) > Stages.ORDER.index(other)
+
+    def __ge__(self, other):
+        self._check_type(other)
+        return Stages.ORDER.index(self) >= Stages.ORDER.index(other)
+
+
 class Stages:
     """ The stages each file ingestion goes through """
 
-    NEW = "new"
-    ARCHIVED = "archived"
-    STAGED = "staged"
-    CLEANED = "cleaned"
-    INSERTED = "inserted"
-    COMPLETED = "completed"
+    NEW = StageObj("new")
+    ARCHIVED = StageObj("archived")
+    STAGED = StageObj("staged")
+    CLEANED = StageObj("cleaned")
+    INSERTED = StageObj("inserted")
+    COMPLETED = StageObj("completed")
 
     ORDER = [NEW, ARCHIVED, STAGED, CLEANED, INSERTED, COMPLETED]
 
