@@ -43,7 +43,7 @@ def abandon_file(spark: SparkSession, dbutils: DBUtils,
     import_entry = ImportFileEntry(
         spark=spark, row_hash=row_hash,
         source_name=source_name, table_name=table_name, file_name=file_name,
-        increment=increment
+        increment=increment, create_if_missing=False
     )
     current_stage = import_entry.get_current_stage()
 

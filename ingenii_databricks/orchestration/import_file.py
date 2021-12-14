@@ -114,6 +114,8 @@ class ImportFileEntry(OrchestrationTable):
             default []. Where we are creating 'review' entries the data is
             already ingested, so we can use this to populate the 'stage' and
             'archive' stages
+        create_if_missing : bool, optional
+            Whether to create the entry if it can't be found, by default True
 
         Raises
         ------
