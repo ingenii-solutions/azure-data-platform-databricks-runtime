@@ -27,22 +27,22 @@ class StageObj:
 
     def __lt__(self, other):
         self._check_type(other)
-        return Stages.ORDER.index(self) < Stages.ORDER.index(other)
+        return Stage.ORDER.index(self) < Stage.ORDER.index(other)
 
     def __le__(self, other):
         self._check_type(other)
-        return Stages.ORDER.index(self) <= Stages.ORDER.index(other)
+        return Stage.ORDER.index(self) <= Stage.ORDER.index(other)
 
     def __gt__(self, other):
         self._check_type(other)
-        return Stages.ORDER.index(self) > Stages.ORDER.index(other)
+        return Stage.ORDER.index(self) > Stage.ORDER.index(other)
 
     def __ge__(self, other):
         self._check_type(other)
-        return Stages.ORDER.index(self) >= Stages.ORDER.index(other)
+        return Stage.ORDER.index(self) >= Stage.ORDER.index(other)
 
 
-class Stages:
+class Stage:
     """ The stages each file ingestion goes through """
 
     NEW = StageObj("new")
@@ -70,10 +70,10 @@ class ImportColumns:
 
     @classmethod
     def date_stage(cls, stage_name):
-        if stage_name not in Stages.ORDER:
+        if stage_name not in Stage.ORDER:
             raise Exception(
                 f"Stage not recognised: {stage_name}. "
-                f"Possible stages: {Stages.ORDER}"
+                f"Possible stages: {Stage.ORDER}"
             )
 
         return f"date_{stage_name}"

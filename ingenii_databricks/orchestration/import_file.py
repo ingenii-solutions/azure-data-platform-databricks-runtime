@@ -8,7 +8,7 @@ from pyspark.sql.types import StructField, StructType, IntegerType, \
 from typing import List
 
 from .base import OrchestrationTable
-from ingenii_databricks.enums import ImportColumns, Stages
+from ingenii_databricks.enums import ImportColumns, Stage
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
 
@@ -34,9 +34,9 @@ class ImportFileEntry(OrchestrationTable):
     ] + [
         StructField(
             ImportColumns.date_stage(s), TimestampType(),
-            nullable=bool(s != Stages.NEW)
+            nullable=bool(s != Stage.NEW)
         )
-        for s in Stages.ORDER
+        for s in Stage.ORDER
     ] + [
         StructField(ImportColumns.ROWS_READ, IntegerType(), nullable=True),
         StructField(
@@ -272,7 +272,7 @@ class ImportFileEntry(OrchestrationTable):
                     ImportColumns.SOURCE, ImportColumns.TABLE,
                     ImportColumns.FILE_NAME, ImportColumns.PROCESSED_FILE_NAME,
                     ImportColumns.INCREMENT,
-                    ImportColumns.date_stage(Stages.NEW),
+                    ImportColumns.date_stage(Stage.NEW),
                     ImportColumns.DATE_ROW_INSERTED
                     ) + tuple(
                         ImportColumns.date_stage(s) for s in extra_stages
@@ -311,29 +311,29 @@ class ImportFileEntry(OrchestrationTable):
 
     # Utilities
 
-    def get_current_stage(self) -> str:
+    def get_current_stage(self) -> Stage:
         """
         Get the name of the stage the entry is currently at
 
         Returns
         -------
-        str
+        Stags
             The name of the stage (new, staged, cleaned, etc.)
         """
         if self.deleted:
             return "deleted"
         return [
-            s for s in Stages.ORDER
+            s for s in Stage.ORDER
             if self._details[ImportColumns.date_stage(s)] is not None
         ][-1]
 
-    def is_stage(self, stage_to_compare: str) -> bool:
+    def is_stage(self, stage_to_compare: Stage) -> bool:
         """
         Check if the entry is at the stage passed as a parameter
 
         Parameters
         ----------
-        stage_to_compare : str
+        stage_to_compare : Stags
             Name of the stage to check
 
         Returns
@@ -343,13 +343,13 @@ class ImportFileEntry(OrchestrationTable):
         """
         return self.get_current_stage() == stage_to_compare
 
-    def update_status(self, status_name: str) -> None:
+    def update_status(self, status_name: Stage) -> None:
         """
         Update this entry's status
 
         Parameters
         ----------
-        status_name : str
+        status_name : Stags
             The name of the status to update to
         """
         self.get_import_entry()
@@ -591,7 +591,7 @@ class ImportFileEntry(OrchestrationTable):
             file_name=self.file_name,
             processed_file_name=self.processed_file_name,
             increment=self.increment + 1,
-            extra_stages=[Stages.ARCHIVED, Stages.STAGED])
+            extra_stages=[Stage.ARCHIVED, Stage.STAGED])
 
     # Archive file
 
