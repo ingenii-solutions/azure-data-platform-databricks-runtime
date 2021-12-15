@@ -5,6 +5,9 @@
 NEW FEATURES:
 - **Engineering:** Utility to abandon bad file ingestions
 
+IMPROVEMENTS:
+- **Engineering:** Create source table metadata if missing
+
 ## 0.5.0
 
 IMPROVEMENTS:
