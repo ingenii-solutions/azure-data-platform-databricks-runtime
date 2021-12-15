@@ -13,6 +13,10 @@ from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
 
 
+class MissingEntryException(Exception):
+    ...
+
+
 class ImportFileEntry(OrchestrationTable):
     """
     Object to interact with the status of an individual file's status
@@ -149,7 +153,7 @@ class ImportFileEntry(OrchestrationTable):
             if import_entry.rdd.isEmpty():
 
                 if not create_if_missing:
-                    raise Exception(
+                    raise MissingEntryException(
                         f"Unable to find entry with details "
                         f"{ImportColumns.SOURCE} = '{source_name}', "
                         f"{ImportColumns.TABLE} = '{table_name}', "
@@ -158,7 +162,6 @@ class ImportFileEntry(OrchestrationTable):
                     )
 
                 # Create new entry
-
                 self.create_import_entry(
                     source_name, table_name, file_name, processed_file_name,
                     increment, extra_stages=extra_stages)
@@ -223,7 +226,7 @@ class ImportFileEntry(OrchestrationTable):
                 (col(ImportColumns.FILE_NAME) == file_name) &
                 (col(ImportColumns.INCREMENT) == increment - 1)
                 ).rdd.isEmpty():
-            raise Exception(
+            raise MissingEntryException(
                 f"Trying to create entry with increment {increment}, "
                 f"but entry with increment {increment - 1} does not "
                 f"exist yet!")
@@ -298,7 +301,7 @@ class ImportFileEntry(OrchestrationTable):
             (col(ImportColumns.INCREMENT) == self.increment)
         )
         if result.rdd.isEmpty():
-            raise Exception(
+            raise MissingEntryException(
                 f"Unable to find orchestration.import_file entry with "
                 f"{ImportColumns.HASH} = {self.hash} and "
                 f"{ImportColumns.INCREMENT} = {self.increment}"
