@@ -7,7 +7,6 @@ sys.modules["pyspark"] = Mock()
 sys.modules["pyspark.sql"] = Mock()
 sys.modules["pyspark.sql.dataframe"] = Mock()
 sys.modules["pyspark.sql.functions"] = Mock()
-sys.modules["pyspark.sql.functions.col"] = col_mock = Mock()
 sys.modules["pyspark.sql.session"] = Mock()
 sys.modules["pyspark.sql.types"] = Mock()
 
