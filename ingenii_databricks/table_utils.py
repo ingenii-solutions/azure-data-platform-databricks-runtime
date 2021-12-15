@@ -223,7 +223,7 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {handle_name(database_name)}")
 
 
-def _full_name(database_name: str, table_name: str) -> str:
+def sql_table_name(database_name: str, table_name: str) -> str:
     """
     Given the defined names, return the full SQL-appropriate name
 
@@ -270,7 +270,7 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
     """
     spark.sql(" ".join([
         "CREATE TABLE IF NOT EXISTS",
-        f"{_full_name(database_name, table_name)}",
+        f"{sql_table_name(database_name, table_name)}",
         f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
     ]))
@@ -298,7 +298,7 @@ def add_columns_to_table(spark: SparkSession,
     -------
     """
     spark.sql(" ".join([
-        f"ALTER TABLE {_full_name(database_name, table_name)}",
+        f"ALTER TABLE {sql_table_name(database_name, table_name)}",
         f"ADD COLUMNS ({schema_as_string(columns)})"
     ]))
 
@@ -496,7 +496,7 @@ def delete_table_data(spark: SparkSession, database_name: str, table_name: str
     """
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
-    spark.sql(f"DELETE FROM {_full_name(database_name, table_name)}")
+    spark.sql(f"DELETE FROM {sql_table_name(database_name, table_name)}")
 
 
 def delete_table(spark: SparkSession, database_name: str, table_name: str
@@ -518,7 +518,8 @@ def delete_table(spark: SparkSession, database_name: str, table_name: str
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
     delete_table_data(spark, database_name, table_name)
-    spark.sql(f"DROP TABLE IF EXISTS {_full_name(database_name, table_name)}")
+    spark.sql("DROP TABLE IF EXISTS " +
+              sql_table_name(database_name, table_name))
 
 
 def rename_source_table(spark: SparkSession, data_provider: str,
@@ -550,11 +551,12 @@ def rename_source_table(spark: SparkSession, data_provider: str,
 
     new_table_path = "/dbfs" + get_folder_path(
         "source", data_provider, new_table_name)
-    new_name = f"{data_provider}.{new_table_name.lower()}"
+    new_name = sql_table_name(data_provider, new_table_name)
 
     # Update the metadata
     spark.sql(
-        f"DROP TABLE IF EXISTS {data_provider}.{old_table_name.lower()}")
+        "DROP TABLE IF EXISTS " +
+        sql_table_name(data_provider, old_table_name))
     spark.sql(
         f"CREATE TABLE IF NOT EXISTS {new_name} "
         f"USING DELTA LOCATION '{new_table_path}'")
