@@ -56,6 +56,14 @@ def is_table(spark: SparkSession, table_folder_path: str) -> bool:
     return DeltaTable.isDeltaTable(spark, table_folder_path)
 
 
+def is_table_metadata(spark: SparkSession, table_name: str,
+                      database_name: str = "default") -> bool:
+
+    return table_name in [
+        row.tableName for row in spark.sql(f"SHOW TABLES IN {database_name}")
+    ]
+
+
 def get_table(spark: SparkSession, table_folder_path: str) -> DeltaTable:
     """
     Get the representation of a Delta table

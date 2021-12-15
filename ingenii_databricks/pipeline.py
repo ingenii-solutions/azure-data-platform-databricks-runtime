@@ -15,7 +15,7 @@ from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     get_errors_from_stdout, move_dbt_log_file
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
-    delete_table, insert_dataframe_into_table, is_table, \
+    delete_table, insert_dataframe_into_table, is_table, is_table_metadata, \
     merge_dataframe_into_table, MergeType, read_file
 
 from pre_process.root import find_pre_process_function
@@ -338,7 +338,11 @@ def add_to_source_table(spark: SparkSession, import_entry: ImportFileEntry,
     table_schema : dict
         Schema for the overall source table
     """
-    if not is_table(spark, import_entry.get_source_table_folder_path()):
+    if not (
+            is_table(spark, import_entry.get_source_table_folder_path()) and
+            is_table_metadata(spark, database_name=import_entry.source,
+                              table_name=import_entry.table)
+            ):
         create_source_table(spark, import_entry, table_schema)
 
     file_dataframe = \
