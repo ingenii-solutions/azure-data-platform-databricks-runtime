@@ -360,12 +360,13 @@ class MergeType:
     MERGE_UPDATE = "merge_update"
     MERGE_INSERT = "merge_insert"
     INSERT = "insert"
+    REPLACE = "replace"
 
     @classmethod
     def all_types(cls):
         return [
             cls.MERGE_DATE_ROWS, cls.MERGE_UPDATE,
-            cls.MERGE_INSERT, cls.INSERT
+            cls.MERGE_INSERT, cls.INSERT, cls.REPLACE
         ]
 
     @classmethod
@@ -460,6 +461,26 @@ def delete_table_entries(deltatable: DeltaTable, dataframe: DataFrame,
         .whenMatchedDelete()
 
 
+def delete_table_data(spark: SparkSession, database_name: str, table_name: str
+                      ) -> None:
+    """
+    Delete all the data from a table
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    database_name : str
+        The name of the database
+    table_name : str
+        The name of the table
+    """
+    # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
+    # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
+    full_name = f"{handle_name(database_name)}.{handle_name(table_name)}"
+    spark.sql(f"DELETE FROM {full_name}")
+
+
 def delete_table(spark: SparkSession, database_name: str, table_name: str
                  ) -> None:
     """
@@ -478,9 +499,8 @@ def delete_table(spark: SparkSession, database_name: str, table_name: str
     """
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
-    full_name = f"{handle_name(database_name)}.{handle_name(table_name)}"
-    spark.sql(f"DELETE FROM {full_name}")
-    spark.sql(f"DROP TABLE IF EXISTS {full_name}")
+    delete_table_data(spark, database_name, table_name)
+    spark.sql(f"DROP TABLE IF EXISTS {handle_name(database_name)}.{handle_name(table_name)}")
 
 
 def rename_source_table(spark: SparkSession, data_provider: str,
