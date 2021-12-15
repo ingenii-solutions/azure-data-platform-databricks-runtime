@@ -223,6 +223,25 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {handle_name(database_name)}")
 
 
+def _full_name(database_name: str, table_name: str) -> str:
+    """
+    Given the defined names, return the full SQL-appropriate name
+
+    Parameters
+    ----------
+    database_name : str
+        The name of the database
+    table_name : str
+        The name of the table
+
+    Returns
+    -------
+    str
+        The full SQL-appropriate name
+    """
+    return f"{handle_name(database_name)}.{handle_name(table_name)}"
+
+
 def create_table(spark: SparkSession, database_name: str, table_name: str,
                  schema_list: list, folder_path: str, all_null: bool = False
                  ) -> DeltaTable:
@@ -251,7 +270,7 @@ def create_table(spark: SparkSession, database_name: str, table_name: str,
     """
     spark.sql(" ".join([
         "CREATE TABLE IF NOT EXISTS",
-        f"{handle_name(database_name)}.{handle_name(table_name)}",
+        f"{_full_name(database_name, table_name)}",
         f"({schema_as_string(schema_list, all_null)})",
         f"USING DELTA LOCATION '{folder_path}'"
     ]))
@@ -279,7 +298,7 @@ def add_columns_to_table(spark: SparkSession,
     -------
     """
     spark.sql(" ".join([
-        f"ALTER TABLE {handle_name(database_name)}.{handle_name(table_name)}",
+        f"ALTER TABLE {_full_name(database_name, table_name)}",
         f"ADD COLUMNS ({schema_as_string(columns)})"
     ]))
 
@@ -477,8 +496,7 @@ def delete_table_data(spark: SparkSession, database_name: str, table_name: str
     """
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
-    spark.sql(f"DELETE FROM "
-              f"{handle_name(database_name)}.{handle_name(table_name)}")
+    spark.sql(f"DELETE FROM {_full_name(database_name, table_name)}")
 
 
 def delete_table(spark: SparkSession, database_name: str, table_name: str
@@ -500,8 +518,7 @@ def delete_table(spark: SparkSession, database_name: str, table_name: str
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
     delete_table_data(spark, database_name, table_name)
-    spark.sql(f"DROP TABLE IF EXISTS "
-              f"{handle_name(database_name)}.{handle_name(table_name)}")
+    spark.sql(f"DROP TABLE IF EXISTS {_full_name(database_name, table_name)}")
 
 
 def rename_source_table(spark: SparkSession, data_provider: str,
