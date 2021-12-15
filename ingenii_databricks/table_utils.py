@@ -477,8 +477,8 @@ def delete_table_data(spark: SparkSession, database_name: str, table_name: str
     """
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
-    full_name = f"{handle_name(database_name)}.{handle_name(table_name)}"
-    spark.sql(f"DELETE FROM {full_name}")
+    spark.sql(f"DELETE FROM "
+              f"{handle_name(database_name)}.{handle_name(table_name)}")
 
 
 def delete_table(spark: SparkSession, database_name: str, table_name: str
@@ -500,7 +500,8 @@ def delete_table(spark: SparkSession, database_name: str, table_name: str
     # https://docs.microsoft.com/en-us/azure/databricks/kb/delta/drop-delta-table
     # https://docs.microsoft.com/en-us/azure/databricks/spark/latest/spark-sql/language-manual/delta-delete-from
     delete_table_data(spark, database_name, table_name)
-    spark.sql(f"DROP TABLE IF EXISTS {handle_name(database_name)}.{handle_name(table_name)}")
+    spark.sql(f"DROP TABLE IF EXISTS "
+              f"{handle_name(database_name)}.{handle_name(table_name)}")
 
 
 def rename_source_table(spark: SparkSession, data_provider: str,
