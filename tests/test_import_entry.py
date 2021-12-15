@@ -27,7 +27,7 @@ class TestInitialisation(TestCase):
     increment = 0
 
     def test_entry_doesnt_exist_create(self):
-        spark_session = Mock()
+        """ Creates new entry if one doesn't exist """
 
         import_table_df_mock = Mock(
             return_value=Mock(
@@ -46,7 +46,7 @@ class TestInitialisation(TestCase):
                 patch(f"{class_str}.create_import_entry", create_import_entry_mock), \
                 patch(f"{class_str}.get_import_entry", get_import_entry_mock):
             ImportFileEntry(
-                spark=spark_session,
+                spark=Mock(),
                 source_name=self.source_name, table_name=self.table_name,
                 file_name=self.file_name, increment=self.increment,
             )
@@ -58,7 +58,7 @@ class TestInitialisation(TestCase):
         get_import_entry_mock.assert_called_once()
 
     def test_entry_doesnt_exist_create_wrong_increment(self):
-        spark_session = Mock()
+        """ Increment is 1, entry with increment 0 doesn't exist """
 
         import_table_df_mock = Mock(
             return_value=Mock(
@@ -69,18 +69,17 @@ class TestInitialisation(TestCase):
                 )
             )
         )
-        get_import_entry_mock = Mock()
 
         with patch(f"{class_str}.get_import_table_df", import_table_df_mock):
             self.assertRaises(
                 MissingEntryException, ImportFileEntry,
-                spark=spark_session,
+                spark=Mock(),
                 source_name=self.source_name, table_name=self.table_name,
                 file_name=self.file_name, increment=self.increment + 1,
             )
 
     def test_entry_doesnt_exist_dont_create(self):
-        spark_session = Mock()
+        """ Entry doesn't exist, and set to not create one """
 
         import_table_df_mock = Mock(
             return_value=Mock(
@@ -95,14 +94,14 @@ class TestInitialisation(TestCase):
         with patch(f"{class_str}.get_import_table_df", import_table_df_mock):
             self.assertRaises(
                 MissingEntryException, ImportFileEntry,
-                spark=spark_session,
+                spark=Mock(),
                 source_name=self.source_name, table_name=self.table_name,
                 file_name=self.file_name, increment=self.increment,
                 create_if_missing=False
             )
 
     def test_entry_exists(self):
-        spark_session = Mock()
+        """ Entry exists, and successfully retrieved """
 
         import_table_df_mock = Mock(
             return_value=Mock(
@@ -122,7 +121,7 @@ class TestInitialisation(TestCase):
                 patch(f"{class_str}.create_import_entry", create_import_entry_mock), \
                 patch(f"{class_str}.get_import_entry", get_import_entry_mock):
             import_entry = ImportFileEntry(
-                spark=spark_session,
+                spark=Mock(),
                 source_name=self.source_name, table_name=self.table_name,
                 file_name=self.file_name, increment=self.increment,
             )
