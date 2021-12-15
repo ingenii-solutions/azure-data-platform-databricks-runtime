@@ -43,7 +43,7 @@ def is_table(spark: SparkSession, table_folder_path: str) -> bool:
 
     Parameters
     ----------
-    spark : pyspark.sql.session.SparkSession
+    spark : SparkSession
         Object for interacting with Delta tables
     table_folder_path : str
         The folder path to check
@@ -58,9 +58,27 @@ def is_table(spark: SparkSession, table_folder_path: str) -> bool:
 
 def is_table_metadata(spark: SparkSession, table_name: str,
                       database_name: str = "default") -> bool:
+    """
+    Determine if there is a table in the Databricks metadata layer
+
+    Parameters
+    ----------
+    spark : SparkSession
+        Object for interacting with Delta tables
+    table_name : str
+        The name of the table
+    database_name : str, optional
+        The name of the database, by default "default"
+
+    Returns
+    -------
+    bool
+        Whether this is a table or not
+    """
 
     return table_name in [
-        row.tableName for row in spark.sql(f"SHOW TABLES IN {database_name}")
+        row.tableName
+        for row in spark.sql(f"SHOW TABLES IN {database_name}").collect()
     ]
 
 
