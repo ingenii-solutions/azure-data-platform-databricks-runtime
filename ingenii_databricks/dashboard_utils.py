@@ -73,4 +73,6 @@ def filtered_import_table(spark: SparkSession, dbutils: DBUtils) -> DataFrame:
     if table != "--":
         table_query = table_query.filter(col("table") == table)
 
+    table_query = table_query.sort("source", "table", "file_name")
+
     return table_query
