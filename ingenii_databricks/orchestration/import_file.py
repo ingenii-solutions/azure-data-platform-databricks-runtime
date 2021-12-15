@@ -2,14 +2,19 @@ from datetime import datetime
 from delta.tables import DeltaTable
 from os import path
 from pyspark.sql.functions import col, hash, lit
+from pyspark.sql.session import SparkSession
 from pyspark.sql.types import StructField, StructType, IntegerType, \
     StringType, TimestampType
 from typing import List
 
 from .base import OrchestrationTable
-from ingenii_databricks.enums import ImportColumns, Stages
+from ingenii_databricks.enums import ImportColumns, Stage
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
     handle_name
+
+
+class MissingEntryException(Exception):
+    ...
 
 
 class ImportFileEntry(OrchestrationTable):
@@ -29,9 +34,9 @@ class ImportFileEntry(OrchestrationTable):
     ] + [
         StructField(
             ImportColumns.date_stage(s), TimestampType(),
-            nullable=bool(s != Stages.NEW)
+            nullable=bool(s != Stage.NEW)
         )
-        for s in Stages.ORDER
+        for s in Stage.ORDER
     ] + [
         StructField(ImportColumns.ROWS_READ, IntegerType(), nullable=True),
         StructField(
@@ -80,9 +85,11 @@ class ImportFileEntry(OrchestrationTable):
     def increment(self, value):
         self._details[ImportColumns.INCREMENT] = value
 
-    def __init__(self, spark, row_hash=None, source_name=None,
-                 table_name=None, file_name=None, processed_file_name=None,
-                 increment=0, extra_stages=[]):
+    def __init__(self, spark: SparkSession, row_hash: int = None,
+                 source_name: str = None, table_name: str = None,
+                 file_name: str = None, processed_file_name: str = None,
+                 increment: int = 0, extra_stages: List[str] = [],
+                 create_if_missing: bool = True):
         """
         Create an ImportFileEntry instance for a specific file to be ingested
 
@@ -111,6 +118,8 @@ class ImportFileEntry(OrchestrationTable):
             default []. Where we are creating 'review' entries the data is
             already ingested, so we can use this to populate the 'stage' and
             'archive' stages
+        create_if_missing : bool, optional
+            Whether to create the entry if it can't be found, by default True
 
         Raises
         ------
@@ -142,52 +151,17 @@ class ImportFileEntry(OrchestrationTable):
                 (col(ImportColumns.FILE_NAME) == file_name) &
                 (col(ImportColumns.INCREMENT) == increment))
             if import_entry.rdd.isEmpty():
+
+                if not create_if_missing:
+                    raise MissingEntryException(
+                        f"Unable to find entry with details "
+                        f"{ImportColumns.SOURCE} = '{source_name}', "
+                        f"{ImportColumns.TABLE} = '{table_name}', "
+                        f"{ImportColumns.FILE_NAME} = '{file_name}', "
+                        f"and {ImportColumns.INCREMENT} = {increment}"
+                    )
+
                 # Create new entry
-
-                # Catch if wrong 'increment' value used
-                if increment > 0 and self.get_import_table_df().where(
-                        (col(ImportColumns.SOURCE) == source_name) &
-                        (col(ImportColumns.TABLE) == table_name) &
-                        (col(ImportColumns.FILE_NAME) == file_name) &
-                        (col(ImportColumns.INCREMENT) == increment - 1)
-                        ).rdd.isEmpty():
-                    raise Exception(
-                        f"Trying to create entry with increment {increment}, "
-                        f"but entry with increment {increment - 1} does not "
-                        f"exist yet!")
-
-                expected_paths = [
-                    "/" + "/".join([
-                        "mnt", "raw", source_name, table_name, file_name
-                        ]),
-                    "/" + "/".join([
-                        "mnt", "archive", source_name, table_name, file_name
-                        ])
-                ]
-                if processed_file_name:
-                    expected_paths.extend([
-                        "/" + "/".join([
-                            "mnt", "raw",
-                            source_name, table_name, processed_file_name
-                            ]),
-                        "/" + "/".join([
-                            "mnt", "archive",
-                            source_name, table_name, processed_file_name
-                            ]),
-                        "/" + "/".join([
-                            "mnt", "archive", "before_pre_processing",
-                            source_name, table_name, file_name
-                            ])
-                    ])
-                if not any([
-                    path.exists("/dbfs" + e_path)
-                    for e_path in expected_paths
-                        ]):
-                    raise Exception(
-                        f"Trying to create a new orchestration.import_file "
-                        f"entry, but file does not exist! Can't see a file "
-                        f"at any of {expected_paths}")
-
                 self.create_import_entry(
                     source_name, table_name, file_name, processed_file_name,
                     increment, extra_stages=extra_stages)
@@ -245,6 +219,45 @@ class ImportFileEntry(OrchestrationTable):
             ingested, so we can use this to populate the 'stage' and 'archive'
             stages
         """
+        # Catch if wrong 'increment' value used
+        if increment > 0 and self.get_import_table_df().where(
+                (col(ImportColumns.SOURCE) == source_name) &
+                (col(ImportColumns.TABLE) == table_name) &
+                (col(ImportColumns.FILE_NAME) == file_name) &
+                (col(ImportColumns.INCREMENT) == increment - 1)
+                ).rdd.isEmpty():
+            raise MissingEntryException(
+                f"Trying to create entry with increment {increment}, "
+                f"but entry with increment {increment - 1} does not "
+                f"exist yet!")
+
+        # Check that the file we want to ingest exists
+        def mnt_path(*args):
+            return "/".join(["", "mnt", *args])
+
+        expected_paths = [
+            mnt_path("raw", source_name, table_name, file_name),
+            mnt_path("archive", source_name, table_name, file_name),
+        ]
+        if processed_file_name:
+            expected_paths.extend([
+                mnt_path("raw",
+                         source_name, table_name, processed_file_name),
+                mnt_path("archive",
+                         source_name, table_name, processed_file_name),
+                mnt_path("archive", "before_pre_processing",
+                         source_name, table_name, file_name),
+            ])
+        if not any([
+            path.exists("/dbfs" + e_path)
+            for e_path in expected_paths
+                ]):
+            raise Exception(
+                f"Trying to create a new orchestration.import_file "
+                f"entry, but file does not exist! Can't see a file "
+                f"at any of {expected_paths}")
+
+        # Create the entry
         datetime_now = datetime.utcnow()
         new_entry = self.spark.createDataFrame(
             data=[(
@@ -259,7 +272,7 @@ class ImportFileEntry(OrchestrationTable):
                     ImportColumns.SOURCE, ImportColumns.TABLE,
                     ImportColumns.FILE_NAME, ImportColumns.PROCESSED_FILE_NAME,
                     ImportColumns.INCREMENT,
-                    ImportColumns.date_stage(Stages.NEW),
+                    ImportColumns.date_stage(Stage.NEW),
                     ImportColumns.DATE_ROW_INSERTED
                     ) + tuple(
                         ImportColumns.date_stage(s) for s in extra_stages
@@ -281,38 +294,46 @@ class ImportFileEntry(OrchestrationTable):
 
     def get_import_entry(self) -> None:
         """
-        Update this entry with the latest details
+        Given the hash and increment, find the entry
         """
-        self._details = self.get_import_table_df().where(
+        result = self.get_import_table_df().where(
             (col(ImportColumns.HASH) == self.hash) &
             (col(ImportColumns.INCREMENT) == self.increment)
-        ).first().asDict()
+        )
+        if result.rdd.isEmpty():
+            raise MissingEntryException(
+                f"Unable to find orchestration.import_file entry with "
+                f"{ImportColumns.HASH} = {self.hash} and "
+                f"{ImportColumns.INCREMENT} = {self.increment}"
+            )
+
+        self._details = result.first().asDict()
 
     # Utilities
 
-    def get_current_stage(self) -> str:
+    def get_current_stage(self) -> Stage:
         """
         Get the name of the stage the entry is currently at
 
         Returns
         -------
-        str
+        Stage
             The name of the stage (new, staged, cleaned, etc.)
         """
         if self.deleted:
             return "deleted"
         return [
-            s for s in Stages.ORDER
+            s for s in Stage.ORDER
             if self._details[ImportColumns.date_stage(s)] is not None
         ][-1]
 
-    def is_stage(self, stage_to_compare: str) -> bool:
+    def is_stage(self, stage_to_compare: Stage) -> bool:
         """
         Check if the entry is at the stage passed as a parameter
 
         Parameters
         ----------
-        stage_to_compare : str
+        stage_to_compare : Stage
             Name of the stage to check
 
         Returns
@@ -322,13 +343,13 @@ class ImportFileEntry(OrchestrationTable):
         """
         return self.get_current_stage() == stage_to_compare
 
-    def update_status(self, status_name: str) -> None:
+    def update_status(self, status_name: Stage) -> None:
         """
         Update this entry's status
 
         Parameters
         ----------
-        status_name : str
+        status_name : Stage
             The name of the status to update to
         """
         self.get_import_entry()
@@ -570,7 +591,7 @@ class ImportFileEntry(OrchestrationTable):
             file_name=self.file_name,
             processed_file_name=self.processed_file_name,
             increment=self.increment + 1,
-            extra_stages=[Stages.ARCHIVED, Stages.STAGED])
+            extra_stages=[Stage.ARCHIVED, Stage.STAGED])
 
     # Archive file
 

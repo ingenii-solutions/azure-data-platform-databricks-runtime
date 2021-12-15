@@ -139,3 +139,6 @@ scratch/
 
 # Flake8
 flake8_report.txt
+
+# Testing
+pytest_report_junit.xml
