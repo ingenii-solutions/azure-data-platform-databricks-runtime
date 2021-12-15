@@ -317,7 +317,7 @@ class ImportFileEntry(OrchestrationTable):
 
         Returns
         -------
-        Stags
+        Stage
             The name of the stage (new, staged, cleaned, etc.)
         """
         if self.deleted:
@@ -333,7 +333,7 @@ class ImportFileEntry(OrchestrationTable):
 
         Parameters
         ----------
-        stage_to_compare : Stags
+        stage_to_compare : Stage
             Name of the stage to check
 
         Returns
@@ -349,7 +349,7 @@ class ImportFileEntry(OrchestrationTable):
 
         Parameters
         ----------
-        status_name : Stags
+        status_name : Stage
             The name of the status to update to
         """
         self.get_import_entry()
