@@ -77,3 +77,27 @@ class ImportColumns:
             )
 
         return f"date_{stage_name}"
+
+
+class MergeType:
+    """
+    Class to ensure that the correct merge types are used in functions. When
+    we pass a merge type to a function such as merge_dataframe_into_table, we
+    can use this class to ensure no unintended consequences
+    """
+    MERGE_DATE_ROWS = "merge_date_rows"
+    MERGE_UPDATE = "merge_update"
+    MERGE_INSERT = "merge_insert"
+    INSERT = "insert"
+    REPLACE = "replace"
+
+    @classmethod
+    def all_types(cls):
+        return [
+            cls.MERGE_DATE_ROWS, cls.MERGE_UPDATE,
+            cls.MERGE_INSERT, cls.INSERT, cls.REPLACE
+        ]
+
+    @classmethod
+    def check_type(cls, type_to_check):
+        return type_to_check in cls.all_types()

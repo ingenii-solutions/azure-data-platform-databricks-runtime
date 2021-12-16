@@ -13,10 +13,11 @@ from ingenii_data_engineering.pre_process import PreProcess
 
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     get_errors_from_stdout, move_dbt_log_file
+from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
     delete_table, delete_table_data, insert_dataframe_into_table, is_table, \
-    is_table_metadata, merge_dataframe_into_table, MergeType, read_file
+    is_table_metadata, merge_dataframe_into_table, read_file
 
 from pre_process.root import find_pre_process_function
 
