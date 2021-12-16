@@ -10,7 +10,7 @@ from typing import List
 from .base import OrchestrationTable
 from ingenii_databricks.enums import ImportColumns, Stage
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
-    handle_name
+    handle_name, sql_table_name
 
 
 class MissingEntryException(Exception):
@@ -400,7 +400,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The full name
         """
-        return self.source + "." + handle_name(table_name)
+        return sql_table_name(self.source, table_name)
 
     def get_base_table_name(self) -> str:
         """
