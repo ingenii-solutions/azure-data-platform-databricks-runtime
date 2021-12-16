@@ -121,6 +121,23 @@ def handle_name(raw_name: str) -> str:
                    .replace("\n", "").replace("\t", "_").replace("=", "-")
 
 
+def handle_major_name(raw_name: str) -> str:
+    """
+    More restrictions for 'major' names, such as schema and table names.
+    Column names are more permissive
+
+    Parameters
+    ----------
+    raw_name : str
+        The raw name containing potentially illegal characters
+    Returns
+    -------
+    str
+        The new name, cleaned of any problem containers
+    """
+    return handle_name(raw_name).replace("-", "_")
+
+
 def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
@@ -220,7 +237,8 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     database_name : str
         The database name
     """
-    spark.sql(f"CREATE DATABASE IF NOT EXISTS {handle_name(database_name)}")
+    spark.sql(f"CREATE DATABASE IF NOT EXISTS "
+              f"{handle_major_name(database_name)}")
 
 
 def sql_table_name(database_name: str, table_name: str) -> str:
@@ -239,7 +257,7 @@ def sql_table_name(database_name: str, table_name: str) -> str:
     str
         The full SQL-appropriate name
     """
-    return f"{handle_name(database_name)}.{handle_name(table_name)}"
+    return handle_major_name(f"{database_name}.{table_name}")
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,

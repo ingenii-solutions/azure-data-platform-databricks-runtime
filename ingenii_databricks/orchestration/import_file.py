@@ -10,7 +10,7 @@ from typing import List
 from .base import OrchestrationTable
 from ingenii_databricks.enums import ImportColumns, Stage
 from ingenii_databricks.table_utils import get_folder_path, get_table, \
-    handle_name, sql_table_name
+    handle_major_name, sql_table_name
 
 
 class MissingEntryException(Exception):
@@ -411,7 +411,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The name of the table
         """
-        return handle_name(self.table) + "_" + \
+        return handle_major_name(self.table) + "_" + \
             str(self.hash).replace("-", "m")
 
     # Pre-processing
@@ -623,7 +623,7 @@ class ImportFileEntry(OrchestrationTable):
         str
             The name of the table
         """
-        return handle_name(self.table)
+        return handle_major_name(self.table)
 
     def get_full_source_table_name(self) -> str:
         """
