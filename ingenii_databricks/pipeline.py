@@ -362,9 +362,6 @@ def add_to_source_table(spark: SparkSession, import_entry: ImportFileEntry,
         merge_dataframe_into_table(
             source_table, file_dataframe, join_obj["column"], join_type)
     else:
-        # MergeType.INSERT or MergeType.REPLACE
-        if join_type == MergeType.REPLACE:
-            delete_table_data(spark, import_entry.source, import_entry.table)
         insert_dataframe_into_table(
             import_entry.get_source_table_folder_path(), file_dataframe)
 

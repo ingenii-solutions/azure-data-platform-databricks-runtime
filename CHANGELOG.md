@@ -4,7 +4,6 @@
 
 NEW FEATURES:
 - **Engineering:** Utility to abandon bad file ingestions
-- **Engineering:** Add 'REPLACE' strategy
 
 IMPROVEMENTS:
 - **Engineering:** Create source table metadata if missing
