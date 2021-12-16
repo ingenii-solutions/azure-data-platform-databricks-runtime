@@ -1,10 +1,14 @@
 # CHANGELOG
 
+## 0.5.2
+
+NEW FEATURES:
+- **Engineering:** Add 'REPLACE' strategy
+
 ## 0.5.1
 
 NEW FEATURES:
 - **Engineering:** Utility to abandon bad file ingestions
-- **Engineering:** Add 'REPLACE' strategy
 
 IMPROVEMENTS:
 - **Engineering:** Create source table metadata if missing

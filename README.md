@@ -8,7 +8,7 @@
 * Base image: [databricksruntime/standard:7.x](https://hub.docker.com/layers/databricksruntime/standard/7.x/images/sha256-0d51d36c7b927858757fdc828c6a9fd5375b98ffcb186324060d0b334f5149d3?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Current Version: 0.5.1
+* Current Version: 0.5.2
 
 ## Overview
 
