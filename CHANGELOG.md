@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.5.2
+
+NEW FEATURES:
+- **Engineering:** Add 'REPLACE' strategy
+
 ## 0.5.1
 
 NEW FEATURES:

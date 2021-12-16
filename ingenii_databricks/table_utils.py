@@ -5,7 +5,7 @@ from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
 from typing import List, Union
 
-from ingenii_databricks.enums import ImportColumns as ic
+from ingenii_databricks.enums import ImportColumns as ic, MergeType
 
 
 def get_folder_path(stage: str, source_name: str, table_name: str,
@@ -121,6 +121,23 @@ def handle_name(raw_name: str) -> str:
                    .replace("\n", "").replace("\t", "_").replace("=", "-")
 
 
+def handle_major_name(raw_name: str) -> str:
+    """
+    More restrictions for 'major' names, such as schema and table names.
+    Column names are more permissive
+
+    Parameters
+    ----------
+    raw_name : str
+        The raw name containing potentially illegal characters
+    Returns
+    -------
+    str
+        The new name, cleaned of any problem containers
+    """
+    return handle_name(raw_name).replace("-", "_")
+
+
 def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
@@ -220,7 +237,8 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     database_name : str
         The database name
     """
-    spark.sql(f"CREATE DATABASE IF NOT EXISTS {handle_name(database_name)}")
+    spark.sql(f"CREATE DATABASE IF NOT EXISTS "
+              f"{handle_major_name(database_name)}")
 
 
 def sql_table_name(database_name: str, table_name: str) -> str:
@@ -239,7 +257,7 @@ def sql_table_name(database_name: str, table_name: str) -> str:
     str
         The full SQL-appropriate name
     """
-    return f"{handle_name(database_name)}.{handle_name(table_name)}"
+    return handle_major_name(f"{database_name}.{table_name}")
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,
@@ -367,29 +385,6 @@ def _difference_condition_string(all_columns: List[str],
         for column in all_columns
         if column not in merge_columns and not column.startswith("_")
     ])
-
-
-class MergeType:
-    """
-    Class to ensure that the correct merge types are used in functions. When
-    we pass a merge type to a function such as merge_dataframe_into_table, we
-    can use this class to ensure no unintended consequences
-    """
-    MERGE_DATE_ROWS = "merge_date_rows"
-    MERGE_UPDATE = "merge_update"
-    MERGE_INSERT = "merge_insert"
-    INSERT = "insert"
-
-    @classmethod
-    def all_types(cls):
-        return [
-            cls.MERGE_DATE_ROWS, cls.MERGE_UPDATE,
-            cls.MERGE_INSERT, cls.INSERT
-        ]
-
-    @classmethod
-    def check_type(cls, type_to_check):
-        return type_to_check in cls.all_types()
 
 
 def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
