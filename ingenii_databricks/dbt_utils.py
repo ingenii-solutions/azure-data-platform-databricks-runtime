@@ -1,7 +1,9 @@
 from datetime import datetime
-from os import path, mkdir, remove, rename
+from json import loads as jload
+from os import environ, path, mkdir, remove, rename
 from re import compile
 from shutil import move
+from subprocess import run
 from typing import Tuple
 
 from ingenii_data_engineering.dbt_schema import get_project_config
@@ -136,3 +138,80 @@ def get_errors_from_stdout(dbt_stdout: str) -> Tuple[list, list]:
                 decoded_line.replace("compiled SQL at ", ""))
 
     return error_messages, error_sql_paths
+
+
+def run_dbt_command(databricks_dbt_token, *args):
+    return run(
+        ["dbt", *args, "--profiles-dir", "."],
+        cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
+        env={**environ, "DATABRICKS_DBT_TOKEN": databricks_dbt_token}
+    )
+
+
+def get_dependency_tree(databricks_dbt_token: str):
+    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
+
+    dependencies = {}
+
+    for node_str in result.stdout.split("\n"):
+        if not node_str:
+            continue
+
+        node_json = jload(node_str)
+        #  print(node_json)
+        if node_json["resource_type"] == "source":
+            print(node_json)
+
+        if node_json["resource_type"] not in ["model", "snapshot"]:
+            continue
+
+        for node in node_json.get("depends_on", {}).get("nodes", []):
+            if node not in dependencies:
+                dependencies[node] = []
+            dependencies[node].append({
+                "unique_id": node_json["unique_id"],
+                "name": node_json["name"],
+                "schema": node_json["config"]["schema"],
+                "package_name": node_json["package_name"],
+            })
+
+    return dependencies
+
+
+def create_source_unique_id(project_name, schema_name, table_name):
+    return f"source.{project_name}.{schema_name}.{table_name}"
+
+
+def run_model(databricks_dbt_token, model_name, package_name=None):
+    if package_name:
+        full_name = f"{package_name}.{model_name}"
+    else:
+        full_name = model_name
+
+    result = run_dbt_command(databricks_dbt_token, "run", "--select", full_name)
+
+
+def run_dependent_models(dependencies, processed_models, unique_id):
+
+    run_models = set()
+
+    for item in dependencies.get(unique_id):
+        if item["unique_id"] in processed_models:
+            continue
+
+        run_model(item["name"], package_name=item["package_name"])
+        processed_models.add(item["unique_id"])
+        run_models.add(item["unique_id"])
+
+    return run_models
+
+
+def propagate_source_data(databricks_dbt_token, project_name, schema, table):
+    processed_models = set()
+
+    dependencies = get_dependency_tree(databricks_dbt_token)
+
+    dependent_items = dependencies.get(create_source_unique_id(project_name, schema, table))
+    for item in dependent_items:
+        print(item)
+        run_model(item["name"], package_name=item["package_name"])
