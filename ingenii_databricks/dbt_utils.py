@@ -286,27 +286,38 @@ def run_model(databricks_dbt_token, model_name, package_name=None):
     return run_dbt_command(databricks_dbt_token, "run", "--select", full_name)
 
 
-def run_dependent_models(dependencies, dependents, processed_models, unique_id):
+def propagate_source_data(databricks_dbt_token: str, project_name: str,
+                          schema: str, table: str) -> None:
+    """
+    Propagate the source data to all relevant nodes
 
-    run_models = set()
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        the token to interact with dbt
+    project_name : str
+        The project the source data is in
+    schema : str
+        The schema the source data is in
+    table : str
+        The source data table name
+
+    Raises
+    ------
+    Exception
+        If any propagation fails, raise an error
+    """
+
+    dependencies, dependents = get_dependency_tree(databricks_dbt_token)
+    starting_id = create_source_unique_id(project_name, schema, table)
+
     errors = []
 
-    for item in dependencies.get(unique_id):
-        if any(
-            [
-                item["unique_id"] in processed_models,
-                item["unique_id"] not in forward_nodes
-            ] + [
+    for node in find_node_order(dependencies, dependents, starting_id):
+        # Multiple package names?
+        result = run_model(node)
 
-            ]
-        ):
-            continue
-
-        result = run_model(item["name"], package_name=item["package_name"])
-        if result.returncode == 0:
-            processed_models.add(item["unique_id"])
-            run_models.add(item["unique_id"])
-        else:
+        if result.returncode != 0:
             errors.append(result)
 
     if errors:
@@ -317,27 +328,3 @@ def run_dependent_models(dependencies, dependents, processed_models, unique_id):
                 for error in errors
             ])
         )
-
-    return run_models
-
-
-def propagate_source_data(databricks_dbt_token, project_name, schema, table):
-    all_processed_models = set()
-
-    dependencies, dependents = get_dependency_tree(databricks_dbt_token)
-
-    processed_models = run_dependent_models(
-        dependencies, dependents, all_processed_models,
-        create_source_unique_id(project_name, schema, table))
-
-    all_processed_models.update(processed_models)
-
-    # Get all nodes we will visit
-    # Use this to prune the incoming paths
-
-    # How do I propagate through the graph effectively?
-    # If all dependencies in all_processed_models, go
-    # If all dependencies in all_processed_models or next dependencies, wait
-    # Else, go as well
-
-    # Only add to all_processed_models when all dependencies are also in there
