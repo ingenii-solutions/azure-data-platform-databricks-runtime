@@ -4,7 +4,7 @@ from os import environ, path, mkdir, remove, rename
 from re import compile
 from shutil import move
 from subprocess import run
-from typing import Tuple
+from typing import List, Tuple
 
 from ingenii_data_engineering.dbt_schema import get_project_config
 
@@ -148,10 +148,25 @@ def run_dbt_command(databricks_dbt_token, *args):
     )
 
 
-def get_dependency_tree(databricks_dbt_token: str):
+def get_dependency_tree(databricks_dbt_token: str) -> Tuple[dict, dict]:
+    """
+    Find the all the links between the nodes
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        The token to interact with dbt
+
+    Returns
+    -------
+    dependencies: dict
+        All the nodes this node depends on
+    dependents: dict
+        All the nodes that depend on this node
+    """
     result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
 
-    dependencies = {}
+    dependencies, dependents = {}, {}
 
     for node_str in result.stdout.split("\n"):
         if not node_str:
@@ -159,36 +174,103 @@ def get_dependency_tree(databricks_dbt_token: str):
 
         node_json = jload(node_str)
 
-        if node_json["resource_type"] not in ["model", "snapshot"]:
+        if node_json["resource_type"] not in ["model", "snapshot", "source"]:
             continue
 
+        dependencies[node_json["unique_id"]] = \
+            node_json.get("depends_on", {}).get("nodes", [])
+
         for node in node_json.get("depends_on", {}).get("nodes", []):
-            if node not in dependencies:
-                dependencies[node] = []
-            dependencies[node].append({
+            if node not in dependents:
+                dependents[node] = []
+            dependents[node].append({
                 "unique_id": node_json["unique_id"],
                 "name": node_json["name"],
                 "schema": node_json["config"]["schema"],
                 "package_name": node_json["package_name"],
             })
 
-    return dependencies
+    return dependencies, dependents
 
 
-def find_forward_nodes(dependency_tree, starting_id):
+def find_forward_nodes(dependents_tree: dict, starting_id: str) -> set:
+    """
+    From a starting point, find all the nodes that depend on this node
+
+    Parameters
+    ----------
+    dependents_tree : dict
+        All the nodes that depend on the node
+    starting_id : str
+        The id of the node to start from
+
+    Returns
+    -------
+    set
+        All the node in the tree related to this node
+    """
     all_nodes = set()
     dependent_nodes = [starting_id]
 
     while dependent_nodes:
         all_nodes.update(dependent_nodes)
-        new_dependent_nodes = [
+        dependent_nodes = [
             dep["unique_id"]
             for node_id in dependent_nodes
-            for dep in dependency_tree.get(node_id, [])
+            for dep in dependents_tree.get(node_id, [])
         ]
-        dependent_nodes = new_dependent_nodes
 
     return all_nodes
+
+
+def find_node_order(dependencies: dict, dependents: dict, starting_id: str
+                    ) -> List[str]:
+    """
+    Given the relationships and a starting point, find the correct order to
+    traverse the relevant nodes
+
+    Parameters
+    ----------
+    dependencies: dict
+        All the nodes this node depends on
+    dependents: dict
+        All the nodes that depend on this node
+    starting_id : str
+        The id of the node to start from
+
+    Returns
+    -------
+    List[str]
+        The list of nodes to traverse, in order
+    """
+    forward_nodes = find_forward_nodes(dependents, starting_id)
+
+    node_order = [starting_id]
+
+    # Until all nodes added
+    while set(node_order) != forward_nodes:
+        for node in node_order:
+
+            # For all the nodes that depend on 'node'
+            for depend in dependents.get(node, []):
+                dep_id = depend["unique_id"]
+
+                # Ignore if this is not in the forward tree
+                if dep_id not in forward_nodes:
+                    continue
+
+                # Check if the relevant nodes this depends on have been added
+                missing_dependencies = [
+                    dep not in node_order
+                    for dep in dependencies.get(dep_id, [])
+                    if dep in forward_nodes
+                ]
+
+                # If all dependencies met
+                if not any(missing_dependencies) and dep_id not in node_order:
+                    node_order.append(dep_id)
+
+    return node_order
 
 
 def create_source_unique_id(project_name, schema_name, table_name):
@@ -204,13 +286,20 @@ def run_model(databricks_dbt_token, model_name, package_name=None):
     return run_dbt_command(databricks_dbt_token, "run", "--select", full_name)
 
 
-def run_dependent_models(dependencies, processed_models, unique_id):
+def run_dependent_models(dependencies, dependents, processed_models, unique_id):
 
     run_models = set()
     errors = []
 
     for item in dependencies.get(unique_id):
-        if item["unique_id"] in processed_models:
+        if any(
+            [
+                item["unique_id"] in processed_models,
+                item["unique_id"] not in forward_nodes
+            ] + [
+
+            ]
+        ):
             continue
 
         result = run_model(item["name"], package_name=item["package_name"])
@@ -235,12 +324,10 @@ def run_dependent_models(dependencies, processed_models, unique_id):
 def propagate_source_data(databricks_dbt_token, project_name, schema, table):
     all_processed_models = set()
 
-    dependencies = get_dependency_tree(databricks_dbt_token)
-
-    forward_nodes = find_forward_nodes(dependencies)
+    dependencies, dependents = get_dependency_tree(databricks_dbt_token)
 
     processed_models = run_dependent_models(
-        dependencies, all_processed_models,
+        dependencies, dependents, all_processed_models,
         create_source_unique_id(project_name, schema, table))
 
     all_processed_models.update(processed_models)
