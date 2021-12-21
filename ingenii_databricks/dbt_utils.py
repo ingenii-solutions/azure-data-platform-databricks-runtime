@@ -158,9 +158,6 @@ def get_dependency_tree(databricks_dbt_token: str):
             continue
 
         node_json = jload(node_str)
-        #  print(node_json)
-        if node_json["resource_type"] == "source":
-            print(node_json)
 
         if node_json["resource_type"] not in ["model", "snapshot"]:
             continue
@@ -188,30 +185,54 @@ def run_model(databricks_dbt_token, model_name, package_name=None):
     else:
         full_name = model_name
 
-    result = run_dbt_command(databricks_dbt_token, "run", "--select", full_name)
+    return run_dbt_command(databricks_dbt_token, "run", "--select", full_name)
 
 
 def run_dependent_models(dependencies, processed_models, unique_id):
 
     run_models = set()
+    errors = []
 
     for item in dependencies.get(unique_id):
         if item["unique_id"] in processed_models:
             continue
 
-        run_model(item["name"], package_name=item["package_name"])
-        processed_models.add(item["unique_id"])
-        run_models.add(item["unique_id"])
+        result = run_model(item["name"], package_name=item["package_name"])
+        if result.returncode == 0:
+            processed_models.add(item["unique_id"])
+            run_models.add(item["unique_id"])
+        else:
+            errors.append(result)
+
+    if errors:
+        raise Exception(
+            f"Errors when running models! " +
+            str([
+                {"stdout": error.stdout, "stderr": error.stderr}
+                for error in errors
+            ])
+        )
 
     return run_models
 
 
 def propagate_source_data(databricks_dbt_token, project_name, schema, table):
-    processed_models = set()
+    all_processed_models = set()
 
     dependencies = get_dependency_tree(databricks_dbt_token)
 
-    dependent_items = dependencies.get(create_source_unique_id(project_name, schema, table))
-    for item in dependent_items:
-        print(item)
-        run_model(item["name"], package_name=item["package_name"])
+    processed_models = run_dependent_models(
+        dependencies, all_processed_models,
+        create_source_unique_id(project_name, schema, table))
+
+    all_processed_models.update(processed_models)
+
+    # Get all nodes we will visit
+    # Use this to prune the incoming paths
+
+    # How do I propagate through the graph effectively?
+    # If all dependencies in all_processed_models, go
+    # If all dependencies in all_processed_models or next dependencies, wait
+    # Else, go as well
+
+    # Only add to all_processed_models when all dependencies are also in there
