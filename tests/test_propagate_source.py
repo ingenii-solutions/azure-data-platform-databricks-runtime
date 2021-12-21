@@ -67,7 +67,11 @@ class TestSourcePropagation(TestCase):
     forwards = {
         "id_1": {"id_2", "id_3"},
         "id_3": {"id_2"},
-        "id_4": {"id_3"}
+        "id_4": {"id_3"},
+    }
+    backwards = {
+        "id_2": {"id_1", "id_3"},
+        "id_3": {"id_1", "id_4"},
     }
 
     def test_get_correct_tree(self):
@@ -79,8 +83,11 @@ class TestSourcePropagation(TestCase):
         with patch(file_str + ".run_dbt_command", run_dbt_command_mock):
             dependencies, dependents = get_dependency_tree("")
 
-        for u_id, dependents in dependents.items():
-            self.assertSetEqual(set([dep["unique_id"] for dep in dependents]),
+        for u_id, deps in dependencies.items():
+            self.assertSetEqual(set(deps), self.backwards.get(u_id, set()))
+
+        for u_id, deps in dependents.items():
+            self.assertSetEqual(set([dep["unique_id"] for dep in deps]),
                                 self.forwards[u_id])
 
         self.assertTrue("id_2" not in dependents)
@@ -92,7 +99,7 @@ class TestSourcePropagation(TestCase):
         )
 
         with patch(file_str + ".run_dbt_command", run_dbt_command_mock):
-            dependencies, dependents = get_dependency_tree("")
+            _, dependents = get_dependency_tree("")
 
         self.assertSetEqual({"id_1", "id_2", "id_3"},
                             find_forward_nodes(dependents, "id_1"))
