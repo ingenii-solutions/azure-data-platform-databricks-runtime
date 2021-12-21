@@ -257,7 +257,7 @@ def sql_table_name(database_name: str, table_name: str) -> str:
     str
         The full SQL-appropriate name
     """
-    return handle_major_name(f"{database_name}.{table_name}")
+    return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,
