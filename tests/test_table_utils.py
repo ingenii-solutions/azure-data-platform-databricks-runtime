@@ -16,13 +16,12 @@ class TestTableUtils(TestCase):
         ],
         "source_1.table_2": [
             ("source 1", "table 2"),
+            ("source-1", "table 2"),
+            ("source=1", "ta\nble\t2"),
         ],
         "source[1].table[2]": [
             ("source{1]", "table[2}"),
             ("source{1)", "table(2}"),
-        ],
-        "source-1.table_2": [
-            ("source=1", "ta\nble\t2"),
         ],
     }
 
