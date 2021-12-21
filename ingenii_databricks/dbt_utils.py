@@ -175,6 +175,22 @@ def get_dependency_tree(databricks_dbt_token: str):
     return dependencies
 
 
+def find_forward_nodes(dependency_tree, starting_id):
+    all_nodes = set()
+    dependent_nodes = [starting_id]
+
+    while dependent_nodes:
+        all_nodes.update(dependent_nodes)
+        new_dependent_nodes = [
+            dep["unique_id"]
+            for node_id in dependent_nodes
+            for dep in dependency_tree.get(node_id, [])
+        ]
+        dependent_nodes = new_dependent_nodes
+
+    return all_nodes
+
+
 def create_source_unique_id(project_name, schema_name, table_name):
     return f"source.{project_name}.{schema_name}.{table_name}"
 
@@ -220,6 +236,8 @@ def propagate_source_data(databricks_dbt_token, project_name, schema, table):
     all_processed_models = set()
 
     dependencies = get_dependency_tree(databricks_dbt_token)
+
+    forward_nodes = find_forward_nodes(dependencies)
 
     processed_models = run_dependent_models(
         dependencies, all_processed_models,
