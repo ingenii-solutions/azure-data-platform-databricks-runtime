@@ -40,7 +40,7 @@ class TestSourcePropagation(TestCase):
                 "unique_id": "source.package_1.schema_1.name_1",
                 "name": "name_1",
                 "package_name": "package_1",
-                "config": {"schema": "schema_1"}
+                "source_name": "schema_1"
             }, {
                 "resource_type": "model",
                 "unique_id": "model.package_1.name_2",
@@ -66,11 +66,11 @@ class TestSourcePropagation(TestCase):
                     ]
                 }
             }, {
-                "resource_type": "model",
+                "resource_type": "source",
                 "unique_id": "source.package_1.schema_1.name_4",
                 "name": "name_4",
                 "package_name": "package_1",
-                "config": {"schema": "schema_1"},
+                "source_name": "schema_1",
             }
         ]
     ])

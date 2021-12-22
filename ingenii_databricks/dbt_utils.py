@@ -194,10 +194,15 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
         nodes[node_json["unique_id"]] = {
             "unique_id": node_json["unique_id"],
             "name": node_json["name"],
-            "schema": node_json["config"]["schema"],
             "package_name": node_json["package_name"],
             "depends_on": node_json.get("depends_on", {}).get("nodes", [])
         }
+        if node_json["resource_type"] == "source":
+            nodes[node_json["unique_id"]]["schema"] = \
+                node_json["source_name"]
+        else:
+            nodes[node_json["unique_id"]]["schema"] = \
+                node_json["config"]["schema"]
 
         for node in node_json.get("depends_on", {}).get("nodes", []):
             if node not in dependents:
