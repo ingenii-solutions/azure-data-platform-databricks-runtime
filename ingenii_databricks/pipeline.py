@@ -1,5 +1,6 @@
 from datetime import datetime
-from os import environ, mkdir, path
+import logging
+from os import mkdir, path
 from pyspark.dbutils import DBUtils
 from pyspark.sql.functions import lit
 from pyspark.sql.session import SparkSession
@@ -12,7 +13,8 @@ from ingenii_data_engineering.dbt_schema import add_individual_table, \
 from ingenii_data_engineering.pre_process import PreProcess
 
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
-    get_errors_from_stdout, move_dbt_log_file
+    create_unique_id, find_node_order, get_errors_from_stdout, get_nodes_and_dependents, \
+    move_dbt_log_file, run_dbt_command
 from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
@@ -201,31 +203,29 @@ def test_file_table(import_entry: ImportFileEntry, databricks_dbt_token: str,
 
     clear_dbt_log_file(dbt_root_folder)
 
-    res = run(
-        f"dbt test --profiles-dir . --models "
-        f"source:{import_entry.get_full_file_table_name()}".split(),
-        cwd=dbt_root_folder, capture_output=True, text=True,
-        env={**environ, "DATABRICKS_DBT_TOKEN": databricks_dbt_token}
-        )
+    result = run_dbt_command(
+        databricks_dbt_token, "test",
+        "--models", f"source:{import_entry.get_full_file_table_name()}"
+    )
 
     move_dbt_log_file(import_entry, dbt_root_folder, log_target_folder)
 
     # If all tests have passed
-    if res.returncode == 0:
+    if result.returncode == 0:
         return {
             "success": True,
-            "stdout": res.stdout,
-            "stderr": res.stderr
+            "stdout": result.stdout,
+            "stderr": result.stderr
             }
 
     # If there were test errors
-    error_messages, error_sql_files = get_errors_from_stdout(res.stdout)
+    error_messages, error_sql_files = get_errors_from_stdout(result.stdout)
     return {
         "success": False,
         "error_messages": error_messages,
         "error_sql_files": error_sql_files,
-        "stdout": res.stdout,
-        "stderr": res.stderr
+        "stdout": result.stdout,
+        "stderr": result.stderr
         }
 
 
@@ -389,3 +389,53 @@ def remove_file_table(spark: SparkSession, dbutils: DBUtils,
                  import_entry.get_file_table_name())
     # Unmanaged table, so must delete the files separately
     dbutils.fs.rm(import_entry.get_file_table_folder_path(), True)
+
+
+def propagate_source_data(databricks_dbt_token: str, project_name: str,
+                          schema: str, table: str) -> None:
+    """
+    Propagate the source data to all relevant nodes
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        the token to interact with dbt
+    project_name : str
+        The project the source data is in
+    schema : str
+        The schema the source data is in
+    table : str
+        The source data table name
+
+    Raises
+    ------
+    Exception
+        If any propagation fails, raise an error
+    """
+
+    nodes, dependents = get_nodes_and_dependents(databricks_dbt_token)
+    starting_id = create_unique_id(project_name, "source", schema, table)
+
+    logging.info(f"Running dependent models for {schema}.{table}")
+
+    errors = []
+
+    for node in find_node_order(nodes, dependents, starting_id):
+        logging.info(f"Running {node}")
+
+        result = run_dbt_command(
+            databricks_dbt_token, "run", "--select",
+            f"{nodes[node]['package_name']}.{nodes[node]['name']}"
+        )
+
+        if result.returncode != 0:
+            errors.append(result)
+
+    if errors:
+        raise Exception(
+            f"Errors when running models! " +
+            str([
+                {"stdout": error.stdout, "stderr": error.stderr}
+                for error in errors
+            ])
+        )

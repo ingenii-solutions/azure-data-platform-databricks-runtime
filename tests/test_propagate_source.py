@@ -4,13 +4,16 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 sys.modules["delta.tables"] = Mock()
+sys.modules["pyspark.dbutils"] = Mock()
 sys.modules["pyspark.sql.dataframe"] = Mock()
 sys.modules["pyspark.sql.functions"] = Mock()
 sys.modules["pyspark.sql.session"] = Mock()
 sys.modules["pyspark.sql.types"] = Mock()
+sys.modules["pre_process.root"] = Mock()
 
 from ingenii_databricks.dbt_utils import get_nodes_and_dependents, \
-    find_forward_nodes, find_node_order, propagate_source_data  # noqa: E402
+    find_forward_nodes, find_node_order  # noqa: E402
+from ingenii_databricks.pipeline import propagate_source_data  # noqa: E402
 
 file_str = "ingenii_databricks.dbt_utils"
 
@@ -110,9 +113,6 @@ class TestSourcePropagation(TestCase):
         with patch(file_str + ".run_dbt_command", self.run_dbt_command_mock):
             nodes, dependents = get_nodes_and_dependents(self.dbt_token)
 
-        print(nodes)
-        print(dependents)
-
         for node_id, details in nodes.items():
             self.assertSetEqual(
                 set(details["depends_on"]),
@@ -157,23 +157,30 @@ class TestSourcePropagation(TestCase):
         )
 
     def test_propagate_source_data(self):
-        run_model_mock = Mock(return_value=Mock(returncode=0))
+        run_dbt_command_mock = \
+            Mock(return_value=Mock(stdout=self.node_details, returncode=0))
 
         with \
-                patch(file_str + ".run_dbt_command",
-                      self.run_dbt_command_mock), \
-                patch(file_str + ".run_model",
-                      run_model_mock):
+            patch("ingenii_databricks.pipeline.run_dbt_command",
+                  run_dbt_command_mock), \
+            patch(file_str + ".run_dbt_command",
+                  run_dbt_command_mock):
             propagate_source_data(self.dbt_token,
                                   "package_1", "schema_1", "name_1")
 
-        all_calls = run_model_mock.call_args_list
-        self.assertEqual(len(all_calls), 2)
+        all_calls = run_dbt_command_mock.call_args_list
+        self.assertEqual(len(all_calls), 3)
 
         args, kwargs = all_calls[0]
-        self.assertTupleEqual(args, (self.dbt_token, "name_3", "package_1"))
+        self.assertTupleEqual(args, (self.dbt_token, "ls", "--output", "json"))
         self.assertDictEqual(kwargs, {})
 
         args, kwargs = all_calls[1]
-        self.assertTupleEqual(args, (self.dbt_token, "name_2", "package_1"))
+        self.assertTupleEqual(
+            args, (self.dbt_token, "run", "--select", "package_1.name_3"))
+        self.assertDictEqual(kwargs, {})
+
+        args, kwargs = all_calls[2]
+        self.assertTupleEqual(
+            args, (self.dbt_token, "run", "--select", "package_1.name_2"))
         self.assertDictEqual(kwargs, {})
