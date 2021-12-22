@@ -9,7 +9,7 @@ sys.modules["pyspark.sql.functions"] = Mock()
 sys.modules["pyspark.sql.session"] = Mock()
 sys.modules["pyspark.sql.types"] = Mock()
 
-from ingenii_databricks.dbt_utils import get_dependency_tree, \
+from ingenii_databricks.dbt_utils import get_nodes_and_dependents, \
     find_forward_nodes, find_node_order, propagate_source_data  # noqa: E402
 
 file_str = "ingenii_databricks.dbt_utils"
@@ -34,37 +34,37 @@ class TestSourcePropagation(TestCase):
         dumps(node_json) for node_json in [
             {
                 "resource_type": "source",
-                "unique_id": "package_1.schema_1.name_1",
+                "unique_id": "source.package_1.schema_1.name_1",
                 "name": "name_1",
                 "package_name": "package_1",
                 "config": {"schema": "schema_1"}
             }, {
                 "resource_type": "model",
-                "unique_id": "package_1.schema_1.name_2",
+                "unique_id": "model.package_1.name_2",
                 "name": "name_2",
                 "package_name": "package_1",
                 "config": {"schema": "schema_1"},
                 "depends_on": {
                     "nodes": [
-                        "package_1.schema_1.name_1",
-                        "package_1.schema_1.name_3",
+                        "source.package_1.schema_1.name_1",
+                        "model.package_1.name_3",
                     ]
                 }
             }, {
                 "resource_type": "model",
-                "unique_id": "package_1.schema_1.name_3",
+                "unique_id": "model.package_1.name_3",
                 "name": "name_3",
                 "package_name": "package_1",
                 "config": {"schema": "schema_1"},
                 "depends_on": {
                     "nodes": [
-                        "package_1.schema_1.name_1",
-                        "package_1.schema_1.name_4",
+                        "source.package_1.schema_1.name_1",
+                        "source.package_1.schema_1.name_4",
                     ]
                 }
             }, {
                 "resource_type": "model",
-                "unique_id": "package_1.schema_1.name_4",
+                "unique_id": "source.package_1.schema_1.name_4",
                 "name": "name_4",
                 "package_name": "package_1",
                 "config": {"schema": "schema_1"},
@@ -73,30 +73,32 @@ class TestSourcePropagation(TestCase):
     ])
 
     forwards = {
-        "package_1.schema_1.name_1": {
-            "package_1.schema_1.name_2", "package_1.schema_1.name_3"
+        "source.package_1.schema_1.name_1": {
+            "model.package_1.name_2", "model.package_1.name_3"
         },
-        "package_1.schema_1.name_3": {"package_1.schema_1.name_2"},
-        "package_1.schema_1.name_4": {"package_1.schema_1.name_3"},
+        "model.package_1.name_3": {"model.package_1.name_2"},
+        "source.package_1.schema_1.name_4": {"model.package_1.name_3"},
     }
     backwards = {
-        "package_1.schema_1.name_2": {
-            "package_1.schema_1.name_1", "package_1.schema_1.name_3"
+        "model.package_1.name_2": {
+            "source.package_1.schema_1.name_1",
+            "model.package_1.name_3"
         },
-        "package_1.schema_1.name_3": {
-            "package_1.schema_1.name_1", "package_1.schema_1.name_4"
+        "model.package_1.name_3": {
+            "source.package_1.schema_1.name_1",
+            "source.package_1.schema_1.name_4"
         },
     }
     expected_orders = {
-        "package_1.schema_1.name_1": [
-            "package_1.schema_1.name_1",
-            "package_1.schema_1.name_3",
-            "package_1.schema_1.name_2",
+        "source.package_1.schema_1.name_1": [
+            "source.package_1.schema_1.name_1",
+            "model.package_1.name_3",
+            "model.package_1.name_2",
         ],
-        "package_1.schema_1.name_4": [
-            "package_1.schema_1.name_4",
-            "package_1.schema_1.name_3",
-            "package_1.schema_1.name_2",
+        "source.package_1.schema_1.name_4": [
+            "source.package_1.schema_1.name_4",
+            "model.package_1.name_3",
+            "model.package_1.name_2",
         ],
     }
 
@@ -106,47 +108,52 @@ class TestSourcePropagation(TestCase):
         """ Given the above definition, generate the correct tree """
 
         with patch(file_str + ".run_dbt_command", self.run_dbt_command_mock):
-            dependencies, dependents = get_dependency_tree(self.dbt_token)
+            nodes, dependents = get_nodes_and_dependents(self.dbt_token)
 
-        for u_id, deps in dependencies.items():
-            self.assertSetEqual(set(deps), self.backwards.get(u_id, set()))
+        print(nodes)
+        print(dependents)
 
-        for u_id, deps in dependents.items():
-            self.assertSetEqual(set([dep["unique_id"] for dep in deps]),
-                                self.forwards[u_id])
+        for node_id, details in nodes.items():
+            self.assertSetEqual(
+                set(details["depends_on"]),
+                self.backwards.get(node_id, set())
+            )
 
-        self.assertTrue("id_2" not in dependents)
+        for node_id, deps in dependents.items():
+            self.assertSetEqual(set(deps), self.forwards[node_id])
+
+        self.assertTrue("model.package_1.name_2" not in dependents)
 
     def test_find_forward_nodes(self):
         """ From a starting point, find only the forward nodes """
 
         with patch(file_str + ".run_dbt_command", self.run_dbt_command_mock):
-            _, dependents = get_dependency_tree(self.dbt_token)
+            _, dependents = get_nodes_and_dependents(self.dbt_token)
 
         self.assertSetEqual(
-            set(self.expected_orders["package_1.schema_1.name_1"]),
-            find_forward_nodes(dependents, "package_1.schema_1.name_1")
+            set(self.expected_orders["source.package_1.schema_1.name_1"]),
+            find_forward_nodes(dependents, "source.package_1.schema_1.name_1")
         )
         self.assertSetEqual(
-            set(self.expected_orders["package_1.schema_1.name_4"]),
-            find_forward_nodes(dependents, "package_1.schema_1.name_4")
+            set(self.expected_orders["source.package_1.schema_1.name_4"]),
+            find_forward_nodes(dependents, "source.package_1.schema_1.name_4")
         )
 
     def test_find_node_order(self):
         """ From a starting point, find the order to traverse the nodes """
 
         with patch(file_str + ".run_dbt_command", self.run_dbt_command_mock):
-            dependencies, dependents = get_dependency_tree(self.dbt_token)
+            nodes, dependents = get_nodes_and_dependents(self.dbt_token)
 
         self.assertListEqual(
-            self.expected_orders["package_1.schema_1.name_1"],
-            find_node_order(dependencies, dependents,
-                            "package_1.schema_1.name_1")
+            self.expected_orders["source.package_1.schema_1.name_1"][1:],
+            find_node_order(nodes, dependents,
+                            "source.package_1.schema_1.name_1")
         )
         self.assertListEqual(
-            self.expected_orders["package_1.schema_1.name_4"],
-            find_node_order(dependencies, dependents,
-                            "package_1.schema_1.name_4")
+            self.expected_orders["source.package_1.schema_1.name_4"][1:],
+            find_node_order(nodes, dependents,
+                            "source.package_1.schema_1.name_4")
         )
 
     def test_propagate_source_data(self):
@@ -160,5 +167,13 @@ class TestSourcePropagation(TestCase):
             propagate_source_data(self.dbt_token,
                                   "package_1", "schema_1", "name_1")
 
-        run_model_mock.assert_called_once_with(
-            "source.package_1.schema_1.name_1")
+        all_calls = run_model_mock.call_args_list
+        self.assertEqual(len(all_calls), 2)
+
+        args, kwargs = all_calls[0]
+        self.assertTupleEqual(args, (self.dbt_token, "name_3", "package_1"))
+        self.assertDictEqual(kwargs, {})
+
+        args, kwargs = all_calls[1]
+        self.assertTupleEqual(args, (self.dbt_token, "name_2", "package_1"))
+        self.assertDictEqual(kwargs, {})

@@ -3,7 +3,7 @@ from json import loads as jload
 from os import environ, path, mkdir, remove, rename
 from re import compile
 from shutil import move
-from subprocess import run
+from subprocess import CompletedProcess, run
 from typing import List, Tuple
 
 from ingenii_data_engineering.dbt_schema import get_project_config
@@ -140,7 +140,21 @@ def get_errors_from_stdout(dbt_stdout: str) -> Tuple[list, list]:
     return error_messages, error_sql_paths
 
 
-def run_dbt_command(databricks_dbt_token, *args):
+def run_dbt_command(databricks_dbt_token: str, *args) -> CompletedProcess:
+    """
+    Run a dbt command. Fields to pass to 'dbt' are passed to the function as
+    arguments
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        The token to authenticate to the cluster we are running dbt on
+
+    Returns
+    -------
+    CompletedProcess
+        The result of the command, including stdout and stderr
+    """
     return run(
         ["dbt", *args, "--profiles-dir", "."],
         cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
@@ -148,7 +162,7 @@ def run_dbt_command(databricks_dbt_token, *args):
     )
 
 
-def get_dependency_tree(databricks_dbt_token: str) -> Tuple[dict, dict]:
+def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
     """
     Find the all the links between the nodes
 
@@ -159,14 +173,14 @@ def get_dependency_tree(databricks_dbt_token: str) -> Tuple[dict, dict]:
 
     Returns
     -------
-    dependencies: dict
-        All the nodes this node depends on
+    nodes: dict
+        The mode details, with the unique_id as the key
     dependents: dict
         All the nodes that depend on this node
     """
     result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
 
-    dependencies, dependents = {}, {}
+    nodes, dependents = {}, {}
 
     for node_str in result.stdout.split("\n"):
         if not node_str:
@@ -177,20 +191,20 @@ def get_dependency_tree(databricks_dbt_token: str) -> Tuple[dict, dict]:
         if node_json["resource_type"] not in ["model", "snapshot", "source"]:
             continue
 
-        dependencies[node_json["unique_id"]] = \
-            node_json.get("depends_on", {}).get("nodes", [])
+        nodes[node_json["unique_id"]] = {
+            "unique_id": node_json["unique_id"],
+            "name": node_json["name"],
+            "schema": node_json["config"]["schema"],
+            "package_name": node_json["package_name"],
+            "depends_on": node_json.get("depends_on", {}).get("nodes", [])
+        }
 
         for node in node_json.get("depends_on", {}).get("nodes", []):
             if node not in dependents:
                 dependents[node] = []
-            dependents[node].append({
-                "unique_id": node_json["unique_id"],
-                "name": node_json["name"],
-                "schema": node_json["config"]["schema"],
-                "package_name": node_json["package_name"],
-            })
+            dependents[node].append(node_json["unique_id"]),
 
-    return dependencies, dependents
+    return nodes, dependents
 
 
 def find_forward_nodes(dependents_tree: dict, starting_id: str) -> set:
@@ -215,7 +229,7 @@ def find_forward_nodes(dependents_tree: dict, starting_id: str) -> set:
     while dependent_nodes:
         all_nodes.update(dependent_nodes)
         dependent_nodes = [
-            dep["unique_id"]
+            dep
             for node_id in dependent_nodes
             for dep in dependents_tree.get(node_id, [])
         ]
@@ -223,16 +237,16 @@ def find_forward_nodes(dependents_tree: dict, starting_id: str) -> set:
     return all_nodes
 
 
-def find_node_order(dependencies: dict, dependents: dict, starting_id: str
+def find_node_order(nodes: dict, dependents: dict, starting_id: str
                     ) -> List[str]:
     """
     Given the relationships and a starting point, find the correct order to
-    traverse the relevant nodes
+    traverse the relevant nodes. Does not include the starting node
 
     Parameters
     ----------
-    dependencies: dict
-        All the nodes this node depends on
+    nodes: dict
+        All the nodes and their details, including what they depend on
     dependents: dict
         All the nodes that depend on this node
     starting_id : str
@@ -249,11 +263,10 @@ def find_node_order(dependencies: dict, dependents: dict, starting_id: str
 
     # Until all nodes added
     while set(node_order) != forward_nodes:
-        for node in node_order:
+        for node_id in node_order:
 
             # For all the nodes that depend on 'node'
-            for depend in dependents.get(node, []):
-                dep_id = depend["unique_id"]
+            for dep_id in dependents.get(node_id, []):
 
                 # Ignore if this is not in the forward tree
                 if dep_id not in forward_nodes:
@@ -262,7 +275,7 @@ def find_node_order(dependencies: dict, dependents: dict, starting_id: str
                 # Check if the relevant nodes this depends on have been added
                 missing_dependencies = [
                     dep not in node_order
-                    for dep in dependencies.get(dep_id, [])
+                    for dep in nodes.get(dep_id, {}).get("depends_on", [])
                     if dep in forward_nodes
                 ]
 
@@ -270,14 +283,62 @@ def find_node_order(dependencies: dict, dependents: dict, starting_id: str
                 if not any(missing_dependencies) and dep_id not in node_order:
                     node_order.append(dep_id)
 
-    return node_order
+    return node_order[1:]
 
 
-def create_source_unique_id(project_name, schema_name, table_name):
-    return f"source.{project_name}.{schema_name}.{table_name}"
+def create_unique_id(project_name: str, node_type: str, schema_name: str,
+                     table_name: str) -> str:
+    """
+    Generate the unique ID for a node
+
+    Parameters
+    ----------
+    project_name : str
+        The name of the project
+    node_type : str
+        The type of the node, e.g. 'source' or 'model'
+    schema_name : str
+        The name of the schema, mainly relevant for source nodes
+    table_name : str
+        The name of the table
+
+    Returns
+    -------
+    str
+        The node unique ID
+
+    Raises
+    ------
+    Exception
+        If the node_type is not recognised
+    """
+    if node_type == "source":
+        return f"source.{project_name}.{schema_name}.{table_name}"
+    elif node_type == "model":
+        return f"model.{project_name}.{table_name}"
+    else:
+        raise Exception(f"Can't recognise data type {node_type}")
 
 
-def run_model(databricks_dbt_token, model_name, package_name=None):
+def run_model(databricks_dbt_token: str, model_name: str,
+              package_name: str = None) -> CompletedProcess:
+    """
+    Given a model's details, run this in dbt
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        The token to authenticate to the cluster we are running dbt on
+    model_name : str
+        The name of the model to run
+    package_name : str, optional
+        The name of the project, by default None
+
+    Returns
+    -------
+    CompletedProcess
+        The results of the dbt run
+    """
     if package_name:
         full_name = f"{package_name}.{model_name}"
     else:
@@ -308,14 +369,14 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
         If any propagation fails, raise an error
     """
 
-    dependencies, dependents = get_dependency_tree(databricks_dbt_token)
-    starting_id = create_source_unique_id(project_name, schema, table)
+    nodes, dependents = get_nodes_and_dependents(databricks_dbt_token)
+    starting_id = create_unique_id(project_name, "source", schema, table)
 
     errors = []
 
-    for node in find_node_order(dependencies, dependents, starting_id):
-        # Multiple package names?
-        result = run_model(node)
+    for node in find_node_order(nodes, dependents, starting_id):
+        result = run_model(databricks_dbt_token,
+                           nodes[node]["name"], nodes[node]["package_name"])
 
         if result.returncode != 0:
             errors.append(result)
