@@ -5,7 +5,6 @@ from pyspark.dbutils import DBUtils
 from pyspark.sql.functions import lit
 from pyspark.sql.session import SparkSession
 from shutil import move
-from subprocess import run
 from typing import List
 
 from ingenii_data_engineering.dbt_schema import add_individual_table, \
@@ -13,8 +12,8 @@ from ingenii_data_engineering.dbt_schema import add_individual_table, \
 from ingenii_data_engineering.pre_process import PreProcess
 
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
-    create_unique_id, find_node_order, get_errors_from_stdout, get_nodes_and_dependents, \
-    move_dbt_log_file, run_dbt_command
+    create_unique_id, find_node_order, get_errors_from_stdout, \
+    get_nodes_and_dependents, move_dbt_log_file, run_dbt_command
 from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
