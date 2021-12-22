@@ -159,6 +159,7 @@ def run_dbt_command(databricks_dbt_token: str, *args) -> CompletedProcess:
     logging.info(
         f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'"
     )
+    print(f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'")
     return run(
         ["dbt", *args, "--profiles-dir", "."],
         cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
@@ -207,7 +208,7 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
                 node_json["config"]["schema"]
         elif node_json["resource_type"] == "snapshot":
             nodes[node_json["unique_id"]]["schema"] = \
-                node_json["target_schema"]
+                node_json["config"]["target_schema"]
         else:
             nodes[node_json["unique_id"]]["schema"] = \
                 node_json["source_name"]
@@ -331,3 +332,13 @@ def create_unique_id(project_name: str, node_type: str, schema_name: str,
         return f"model.{project_name}.{table_name}"
     else:
         raise Exception(f"Can't recognise data type {node_type}")
+
+
+class MockDBTError:
+    returncode = 0
+    stdout = ""
+    stderr = ""
+
+    def __init__(self, **kwargs) -> None:
+        for k, v in kwargs.items():
+            setattr(self, k, v)

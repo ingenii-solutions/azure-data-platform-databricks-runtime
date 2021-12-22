@@ -13,7 +13,7 @@ from ingenii_data_engineering.pre_process import PreProcess
 
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     create_unique_id, find_node_order, get_errors_from_stdout, \
-    get_nodes_and_dependents, move_dbt_log_file, run_dbt_command
+    get_nodes_and_dependents, MockDBTError, move_dbt_log_file, run_dbt_command
 from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
@@ -416,11 +416,32 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
     starting_id = create_unique_id(project_name, "source", schema, table)
 
     logging.info(f"Running dependent models for {schema}.{table}")
+    print(f"Running dependent models for {schema}.{table}")
 
+    complete_nodes = {starting_id}
     errors = []
 
-    for node in find_node_order(nodes, dependents, starting_id):
+    node_order = find_node_order(nodes, dependents, starting_id)
+    logging.info(f"Nodes to process for {starting_id}: {node_order}")
+    print(f"Nodes to process for {starting_id}: {node_order}")
+
+    for node in node_order:
         logging.info(f"Running {node}")
+        print(f"Running {node}")
+
+        # Check all the nodes this depends on have been processed
+        missing_dependencies = [
+            dep
+            for dep in nodes[node]["depends_on"]
+            if dep not in complete_nodes and dep in node_order
+        ]
+        if missing_dependencies:
+            errors.append(MockDBTError(
+                returncode=1,
+                stderr=f"Node {node}, dependencies not complete: " +
+                str(missing_dependencies)
+            ))
+            continue
 
         if nodes[node]["resource_type"] == "snapshot":
             command = "snapshot"
@@ -428,15 +449,20 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
             command = "run"
 
         result = run_dbt_command(
-            databricks_dbt_token, command, "--select", nodes[node]['name']
+            databricks_dbt_token, "--warn-error",
+            command, "--select", nodes[node]["name"]
         )
+        if result.returncode == 0:
+            complete_nodes.add(node)
+            logging.info(result.stdout)
+            print(result.stdout)
 
-        if result.returncode != 0:
+        else:
             errors.append(result)
-        logging.info(result.stdout)
 
     if errors:
         raise Exception(
+            f"Completed nodes: {complete_nodes}. "
             f"Errors when running models! " +
             str([
                 {"stdout": error.stdout, "stderr": error.stderr}
