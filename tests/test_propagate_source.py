@@ -42,11 +42,11 @@ class TestSourcePropagation(TestCase):
                 "package_name": "package_1",
                 "source_name": "schema_1"
             }, {
-                "resource_type": "model",
-                "unique_id": "model.package_1.name_2",
+                "resource_type": "snapshot",
+                "unique_id": "snapshot.package_1.name_2",
                 "name": "name_2",
                 "package_name": "package_1",
-                "config": {"schema": "schema_1"},
+                "target_schema": "schema_1",
                 "depends_on": {
                     "nodes": [
                         "source.package_1.schema_1.name_1",
@@ -77,13 +77,13 @@ class TestSourcePropagation(TestCase):
 
     forwards = {
         "source.package_1.schema_1.name_1": {
-            "model.package_1.name_2", "model.package_1.name_3"
+            "snapshot.package_1.name_2", "model.package_1.name_3"
         },
-        "model.package_1.name_3": {"model.package_1.name_2"},
+        "model.package_1.name_3": {"snapshot.package_1.name_2"},
         "source.package_1.schema_1.name_4": {"model.package_1.name_3"},
     }
     backwards = {
-        "model.package_1.name_2": {
+        "snapshot.package_1.name_2": {
             "source.package_1.schema_1.name_1",
             "model.package_1.name_3"
         },
@@ -96,12 +96,12 @@ class TestSourcePropagation(TestCase):
         "source.package_1.schema_1.name_1": [
             "source.package_1.schema_1.name_1",
             "model.package_1.name_3",
-            "model.package_1.name_2",
+            "snapshot.package_1.name_2",
         ],
         "source.package_1.schema_1.name_4": [
             "source.package_1.schema_1.name_4",
             "model.package_1.name_3",
-            "model.package_1.name_2",
+            "snapshot.package_1.name_2",
         ],
     }
 
@@ -177,10 +177,10 @@ class TestSourcePropagation(TestCase):
 
         args, kwargs = all_calls[1]
         self.assertTupleEqual(
-            args, (self.dbt_token, "run", "--select", "package_1.name_3"))
+            args, (self.dbt_token, "run", "--select", "name_3"))
         self.assertDictEqual(kwargs, {})
 
         args, kwargs = all_calls[2]
         self.assertTupleEqual(
-            args, (self.dbt_token, "run", "--select", "package_1.name_2"))
+            args, (self.dbt_token, "snapshot", "--select", "name_2"))
         self.assertDictEqual(kwargs, {})

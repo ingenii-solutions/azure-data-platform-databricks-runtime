@@ -422,13 +422,18 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
     for node in find_node_order(nodes, dependents, starting_id):
         logging.info(f"Running {node}")
 
+        if nodes[node]["resource_type"] == "snapshot":
+            command = "snapshot"
+        else:
+            command = "run"
+
         result = run_dbt_command(
-            databricks_dbt_token, "run", "--select",
-            f"{nodes[node]['package_name']}.{nodes[node]['name']}"
+            databricks_dbt_token, command, "--select", nodes[node]['name']
         )
 
         if result.returncode != 0:
             errors.append(result)
+        logging.info(result.stdout)
 
     if errors:
         raise Exception(

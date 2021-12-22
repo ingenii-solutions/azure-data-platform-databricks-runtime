@@ -1,5 +1,6 @@
 from datetime import datetime
 from json import loads as jload
+import logging
 from os import environ, path, mkdir, remove, rename
 from re import compile
 from shutil import move
@@ -155,6 +156,9 @@ def run_dbt_command(databricks_dbt_token: str, *args) -> CompletedProcess:
     CompletedProcess
         The result of the command, including stdout and stderr
     """
+    logging.info(
+        f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'"
+    )
     return run(
         ["dbt", *args, "--profiles-dir", "."],
         cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
@@ -193,16 +197,20 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
 
         nodes[node_json["unique_id"]] = {
             "unique_id": node_json["unique_id"],
+            "resource_type": node_json["resource_type"],
             "name": node_json["name"],
             "package_name": node_json["package_name"],
             "depends_on": node_json.get("depends_on", {}).get("nodes", [])
         }
-        if node_json["resource_type"] == "source":
-            nodes[node_json["unique_id"]]["schema"] = \
-                node_json["source_name"]
-        else:
+        if node_json["resource_type"] == "model":
             nodes[node_json["unique_id"]]["schema"] = \
                 node_json["config"]["schema"]
+        elif node_json["resource_type"] == "snapshot":
+            nodes[node_json["unique_id"]]["schema"] = \
+                node_json["target_schema"]
+        else:
+            nodes[node_json["unique_id"]]["schema"] = \
+                node_json["source_name"]
 
         for node in node_json.get("depends_on", {}).get("nodes", []):
             if node not in dependents:
