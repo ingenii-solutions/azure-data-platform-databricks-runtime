@@ -12,7 +12,7 @@ sys.modules["pyspark.sql.types"] = Mock()
 sys.modules["pre_process.root"] = Mock()
 
 from ingenii_databricks.dbt_utils import get_nodes_and_dependents, \
-    find_forward_nodes, find_node_order  # noqa: E402
+    find_dependent_nodes, find_node_order  # noqa: E402
 from ingenii_databricks.pipeline import propagate_source_data  # noqa: E402
 
 file_str = "ingenii_databricks.dbt_utils"
@@ -46,7 +46,7 @@ class TestSourcePropagation(TestCase):
                 "unique_id": "snapshot.package_1.name_2",
                 "name": "name_2",
                 "package_name": "package_1",
-                "target_schema": "schema_1",
+                "config": {"target_schema": "schema_1"},
                 "depends_on": {
                     "nodes": [
                         "source.package_1.schema_1.name_1",
@@ -124,7 +124,7 @@ class TestSourcePropagation(TestCase):
 
         self.assertTrue("model.package_1.name_2" not in dependents)
 
-    def test_find_forward_nodes(self):
+    def test_find_dependent_nodes(self):
         """ From a starting point, find only the forward nodes """
 
         with patch(file_str + ".run_dbt_command", self.run_dbt_command_mock):
@@ -132,11 +132,11 @@ class TestSourcePropagation(TestCase):
 
         self.assertSetEqual(
             set(self.expected_orders["source.package_1.schema_1.name_1"]),
-            find_forward_nodes(dependents, "source.package_1.schema_1.name_1")
+            find_dependent_nodes(dependents, "source.package_1.schema_1.name_1")
         )
         self.assertSetEqual(
             set(self.expected_orders["source.package_1.schema_1.name_4"]),
-            find_forward_nodes(dependents, "source.package_1.schema_1.name_4")
+            find_dependent_nodes(dependents, "source.package_1.schema_1.name_4")
         )
 
     def test_find_node_order(self):
@@ -177,10 +177,14 @@ class TestSourcePropagation(TestCase):
 
         args, kwargs = all_calls[1]
         self.assertTupleEqual(
-            args, (self.dbt_token, "run", "--select", "name_3"))
+            args,
+            (self.dbt_token, "--warn-error", "run", "--select", "name_3")
+        )
         self.assertDictEqual(kwargs, {})
 
         args, kwargs = all_calls[2]
         self.assertTupleEqual(
-            args, (self.dbt_token, "snapshot", "--select", "name_2"))
+            args,
+            (self.dbt_token, "--warn-error", "snapshot", "--select", "name_2")
+        )
         self.assertDictEqual(kwargs, {})
