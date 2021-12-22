@@ -159,7 +159,6 @@ def run_dbt_command(databricks_dbt_token: str, *args) -> CompletedProcess:
     logging.info(
         f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'"
     )
-    print(f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'")
     return run(
         ["dbt", *args, "--profiles-dir", "."],
         cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
