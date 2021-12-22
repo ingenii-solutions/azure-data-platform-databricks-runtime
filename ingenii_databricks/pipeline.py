@@ -418,12 +418,13 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
     logging.info(f"Running dependent models for {schema}.{table}")
     print(f"Running dependent models for {schema}.{table}")
 
-    complete_nodes = {starting_id}
-    errors = []
-
+    # Find the nodes we need to process based on the source completed
     node_order = find_node_order(nodes, dependents, starting_id)
     logging.info(f"Nodes to process for {starting_id}: {node_order}")
     print(f"Nodes to process for {starting_id}: {node_order}")
+
+    complete_nodes = {starting_id}
+    errors = []
 
     for node in node_order:
         logging.info(f"Running {node}")
@@ -443,20 +444,23 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
             ))
             continue
 
+        # Different command for snapshots
         if nodes[node]["resource_type"] == "snapshot":
             command = "snapshot"
         else:
             command = "run"
 
+        # Create the model
         result = run_dbt_command(
             databricks_dbt_token, "--warn-error",
             command, "--select", nodes[node]["name"]
         )
+
+        # Handle success or failure
         if result.returncode == 0:
             complete_nodes.add(node)
             logging.info(result.stdout)
             print(result.stdout)
-
         else:
             errors.append(result)
 
