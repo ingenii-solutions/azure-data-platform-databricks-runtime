@@ -426,26 +426,26 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
     complete_nodes = {starting_id}
     errors = []
 
-    for node in node_order:
-        logging.info(f"Running {node}")
-        print(f"Running {node}")
+    for node_id in node_order:
+        logging.info(f"Running {node_id}")
+        print(f"Running {node_id}")
 
         # Check all the nodes this depends on have been processed
         missing_dependencies = [
             dep
-            for dep in nodes[node]["depends_on"]
+            for dep in nodes[node_id]["depends_on"]
             if dep not in complete_nodes and dep in node_order
         ]
         if missing_dependencies:
             errors.append(MockDBTError(
                 returncode=1,
-                stderr=f"Node {node}, dependencies not complete: " +
+                stderr=f"Node {node_id}, dependencies not complete: " +
                 str(missing_dependencies)
             ))
             continue
 
         # Different command for snapshots
-        if nodes[node]["resource_type"] == "snapshot":
+        if nodes[node_id]["resource_type"] == "snapshot":
             command = "snapshot"
         else:
             command = "run"
@@ -453,12 +453,12 @@ def propagate_source_data(databricks_dbt_token: str, project_name: str,
         # Create the model
         result = run_dbt_command(
             databricks_dbt_token, "--warn-error",
-            command, "--select", nodes[node]["name"]
+            command, "--select", nodes[node_id]["name"]
         )
 
         # Handle success or failure
         if result.returncode == 0:
-            complete_nodes.add(node)
+            complete_nodes.add(node_id)
             logging.info(result.stdout)
             print(result.stdout)
         else:

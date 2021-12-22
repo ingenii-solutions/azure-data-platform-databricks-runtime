@@ -1,3 +1,4 @@
+from copy import deepcopy
 from json import dumps
 import sys
 from unittest import TestCase
@@ -33,46 +34,47 @@ class TestSourcePropagation(TestCase):
 
     dbt_token = "123456789"
 
-    node_details = "\n".join([
-        dumps(node_json) for node_json in [
-            {
-                "resource_type": "source",
-                "unique_id": "source.package_1.schema_1.name_1",
-                "name": "name_1",
-                "package_name": "package_1",
-                "source_name": "schema_1"
-            }, {
-                "resource_type": "snapshot",
-                "unique_id": "snapshot.package_1.name_2",
-                "name": "name_2",
-                "package_name": "package_1",
-                "config": {"target_schema": "schema_1"},
-                "depends_on": {
-                    "nodes": [
-                        "source.package_1.schema_1.name_1",
-                        "model.package_1.name_3",
-                    ]
-                }
-            }, {
-                "resource_type": "model",
-                "unique_id": "model.package_1.name_3",
-                "name": "name_3",
-                "package_name": "package_1",
-                "config": {"schema": "schema_1"},
-                "depends_on": {
-                    "nodes": [
-                        "source.package_1.schema_1.name_1",
-                        "source.package_1.schema_1.name_4",
-                    ]
-                }
-            }, {
-                "resource_type": "source",
-                "unique_id": "source.package_1.schema_1.name_4",
-                "name": "name_4",
-                "package_name": "package_1",
-                "source_name": "schema_1",
+    node_details = [
+        {
+            "resource_type": "source",
+            "unique_id": "source.package_1.schema_1.name_1",
+            "name": "name_1",
+            "package_name": "package_1",
+            "source_name": "schema_1"
+        }, {
+            "resource_type": "snapshot",
+            "unique_id": "snapshot.package_1.name_2",
+            "name": "name_2",
+            "package_name": "package_1",
+            "config": {"target_schema": "schema_1"},
+            "depends_on": {
+                "nodes": [
+                    "source.package_1.schema_1.name_1",
+                    "model.package_1.name_3",
+                ]
             }
-        ]
+        }, {
+            "resource_type": "model",
+            "unique_id": "model.package_1.name_3",
+            "name": "name_3",
+            "package_name": "package_1",
+            "config": {"schema": "schema_1"},
+            "depends_on": {
+                "nodes": [
+                    "source.package_1.schema_1.name_1",
+                    "source.package_1.schema_1.name_4",
+                ]
+            }
+        }, {
+            "resource_type": "source",
+            "unique_id": "source.package_1.schema_1.name_4",
+            "name": "name_4",
+            "package_name": "package_1",
+            "source_name": "schema_1",
+        }
+    ]
+    node_details_str = "\n".join([
+        dumps(node_json) for node_json in node_details
     ])
 
     forwards = {
@@ -105,7 +107,7 @@ class TestSourcePropagation(TestCase):
         ],
     }
 
-    run_dbt_command_mock = Mock(return_value=Mock(stdout=node_details))
+    run_dbt_command_mock = Mock(return_value=Mock(stdout=node_details_str))
 
     def test_get_correct_tree(self):
         """ Given the above definition, generate the correct tree """
@@ -132,11 +134,13 @@ class TestSourcePropagation(TestCase):
 
         self.assertSetEqual(
             set(self.expected_orders["source.package_1.schema_1.name_1"]),
-            find_dependent_nodes(dependents, "source.package_1.schema_1.name_1")
+            find_dependent_nodes(
+                dependents, "source.package_1.schema_1.name_1")
         )
         self.assertSetEqual(
             set(self.expected_orders["source.package_1.schema_1.name_4"]),
-            find_dependent_nodes(dependents, "source.package_1.schema_1.name_4")
+            find_dependent_nodes(
+                dependents, "source.package_1.schema_1.name_4")
         )
 
     def test_find_node_order(self):
@@ -158,7 +162,7 @@ class TestSourcePropagation(TestCase):
 
     def test_propagate_source_data(self):
         run_dbt_command_mock = \
-            Mock(return_value=Mock(stdout=self.node_details, returncode=0))
+            Mock(return_value=Mock(stdout=self.node_details_str, returncode=0))
 
         with \
             patch("ingenii_databricks.pipeline.run_dbt_command",
