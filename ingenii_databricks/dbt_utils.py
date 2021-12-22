@@ -1,5 +1,5 @@
 from datetime import datetime
-from json import loads as jload
+from json import loads
 import logging
 from os import environ, path, mkdir, remove, rename
 from re import compile
@@ -190,27 +190,26 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
         if not node_str:
             continue
 
-        node_json = jload(node_str)
+        node_json = loads(node_str)
 
         if node_json["resource_type"] not in ["model", "snapshot", "source"]:
             continue
 
+        if node_json["resource_type"] == "model":
+            schema_name = node_json["config"]["schema"]
+        elif node_json["resource_type"] == "snapshot":
+            schema_name = node_json["config"]["target_schema"]
+        else:
+            schema_name = node_json["source_name"]
+
         nodes[node_json["unique_id"]] = {
             "unique_id": node_json["unique_id"],
             "resource_type": node_json["resource_type"],
-            "name": node_json["name"],
             "package_name": node_json["package_name"],
+            "schema": schema_name,
+            "name": node_json["name"],
             "depends_on": node_json.get("depends_on", {}).get("nodes", [])
         }
-        if node_json["resource_type"] == "model":
-            nodes[node_json["unique_id"]]["schema"] = \
-                node_json["config"]["schema"]
-        elif node_json["resource_type"] == "snapshot":
-            nodes[node_json["unique_id"]]["schema"] = \
-                node_json["config"]["target_schema"]
-        else:
-            nodes[node_json["unique_id"]]["schema"] = \
-                node_json["source_name"]
 
         for node in node_json.get("depends_on", {}).get("nodes", []):
             if node not in dependents:
@@ -220,31 +219,32 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
     return nodes, dependents
 
 
-def find_forward_nodes(dependents_tree: dict, starting_id: str) -> set:
+def find_dependent_nodes(dependents: dict, starting_id: str) -> set:
     """
-    From a starting point, find all the nodes that depend on this node
+    From a starting point, find all the nodes that depend on this node to the
+    furthest extent
 
     Parameters
     ----------
-    dependents_tree : dict
-        All the nodes that depend on the node
+    dependents : dict
+        Details of all node dependents
     starting_id : str
-        The id of the node to start from
+        The ID of the node to start from
 
     Returns
     -------
     set
-        All the node in the tree related to this node
+        All the nodes in the tree related to this node
     """
     all_nodes = set()
-    dependent_nodes = [starting_id]
 
+    dependent_nodes = [starting_id]
     while dependent_nodes:
         all_nodes.update(dependent_nodes)
         dependent_nodes = [
             dep
             for node_id in dependent_nodes
-            for dep in dependents_tree.get(node_id, [])
+            for dep in dependents.get(node_id, [])
         ]
 
     return all_nodes
@@ -270,26 +270,26 @@ def find_node_order(nodes: dict, dependents: dict, starting_id: str
     List[str]
         The list of nodes to traverse, in order
     """
-    forward_nodes = find_forward_nodes(dependents, starting_id)
+    dependent_nodes = find_dependent_nodes(dependents, starting_id)
 
     node_order = [starting_id]
 
     # Until all nodes added
-    while set(node_order) != forward_nodes:
+    while set(node_order) != dependent_nodes:
         for node_id in node_order:
 
-            # For all the nodes that depend on 'node'
+            # For all the nodes that depend on 'node_id'
             for dep_id in dependents.get(node_id, []):
 
                 # Ignore if this is not in the forward tree
-                if dep_id not in forward_nodes:
+                if dep_id not in dependent_nodes:
                     continue
 
-                # Check if the relevant nodes this depends on have been added
+                # Check if the nodes this depends on have been added already
                 missing_dependencies = [
                     dep not in node_order
                     for dep in nodes.get(dep_id, {}).get("depends_on", [])
-                    if dep in forward_nodes
+                    if dep in dependent_nodes
                 ]
 
                 # If all dependencies met
@@ -334,6 +334,7 @@ def create_unique_id(project_name: str, node_type: str, schema_name: str,
 
 
 class MockDBTError:
+    """ For better error messaging, this mimics the CompletedProcess """
     returncode = 0
     stdout = ""
     stderr = ""
