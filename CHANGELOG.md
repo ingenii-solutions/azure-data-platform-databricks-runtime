@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.6.0
+
+NEW FEATURES:
+- **Engineering:** Models and snapshots created after source update
+
+# CHANGELOG
+
 ## 0.5.2
 
 NEW FEATURES:

@@ -1,8 +1,11 @@
 from datetime import datetime
-from os import path, mkdir, remove, rename
+from json import loads
+import logging
+from os import environ, path, mkdir, remove, rename
 from re import compile
 from shutil import move
-from typing import Tuple
+from subprocess import CompletedProcess, run
+from typing import List, Tuple
 
 from ingenii_data_engineering.dbt_schema import get_project_config
 
@@ -136,3 +139,206 @@ def get_errors_from_stdout(dbt_stdout: str) -> Tuple[list, list]:
                 decoded_line.replace("compiled SQL at ", ""))
 
     return error_messages, error_sql_paths
+
+
+def run_dbt_command(databricks_dbt_token: str, *args) -> CompletedProcess:
+    """
+    Run a dbt command. Fields to pass to 'dbt' are passed to the function as
+    arguments
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        The token to authenticate to the cluster we are running dbt on
+
+    Returns
+    -------
+    CompletedProcess
+        The result of the command, including stdout and stderr
+    """
+    logging.info(
+        f"Running dbt command 'dbt {' '.join(args)} --profiles-dir .'"
+    )
+    return run(
+        ["dbt", *args, "--profiles-dir", "."],
+        cwd=environ["DBT_ROOT_FOLDER"], capture_output=True, text=True,
+        env={**environ, "DATABRICKS_DBT_TOKEN": databricks_dbt_token}
+    )
+
+
+def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
+    """
+    Find the all the links between the nodes
+
+    Parameters
+    ----------
+    databricks_dbt_token : str
+        The token to interact with dbt
+
+    Returns
+    -------
+    nodes: dict
+        The mode details, with the unique_id as the key
+    dependents: dict
+        All the nodes that depend on this node
+    """
+    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
+
+    nodes, dependents = {}, {}
+
+    for node_str in result.stdout.split("\n"):
+        if not node_str:
+            continue
+
+        node_json = loads(node_str)
+
+        if node_json["resource_type"] not in ["model", "snapshot", "source"]:
+            continue
+
+        if node_json["resource_type"] == "model":
+            schema_name = node_json["config"]["schema"]
+        elif node_json["resource_type"] == "snapshot":
+            schema_name = node_json["config"]["target_schema"]
+        else:
+            schema_name = node_json["source_name"]
+
+        nodes[node_json["unique_id"]] = {
+            "unique_id": node_json["unique_id"],
+            "resource_type": node_json["resource_type"],
+            "package_name": node_json["package_name"],
+            "schema": schema_name,
+            "name": node_json["name"],
+            "depends_on": node_json.get("depends_on", {}).get("nodes", [])
+        }
+
+        for node in node_json.get("depends_on", {}).get("nodes", []):
+            if node not in dependents:
+                dependents[node] = []
+            dependents[node].append(node_json["unique_id"]),
+
+    return nodes, dependents
+
+
+def find_dependent_nodes(dependents: dict, starting_id: str) -> set:
+    """
+    From a starting point, find all the nodes that depend on this node to the
+    furthest extent
+
+    Parameters
+    ----------
+    dependents : dict
+        Details of all node dependents
+    starting_id : str
+        The ID of the node to start from
+
+    Returns
+    -------
+    set
+        All the nodes in the tree related to this node
+    """
+    all_nodes = set()
+
+    dependent_nodes = [starting_id]
+    while dependent_nodes:
+        all_nodes.update(dependent_nodes)
+        dependent_nodes = [
+            dep
+            for node_id in dependent_nodes
+            for dep in dependents.get(node_id, [])
+        ]
+
+    return all_nodes
+
+
+def find_node_order(nodes: dict, dependents: dict, starting_id: str
+                    ) -> List[str]:
+    """
+    Given the relationships and a starting point, find the correct order to
+    traverse the relevant nodes. Does not include the starting node
+
+    Parameters
+    ----------
+    nodes: dict
+        All the nodes and their details, including what they depend on
+    dependents: dict
+        All the nodes that depend on this node
+    starting_id : str
+        The id of the node to start from
+
+    Returns
+    -------
+    List[str]
+        The list of nodes to traverse, in order
+    """
+    dependent_nodes = find_dependent_nodes(dependents, starting_id)
+
+    node_order = [starting_id]
+
+    # Until all nodes added
+    while set(node_order) != dependent_nodes:
+        for node_id in node_order:
+
+            # For all the nodes that depend on 'node_id'
+            for dep_id in dependents.get(node_id, []):
+
+                # Ignore if this is not in the forward tree
+                if dep_id not in dependent_nodes:
+                    continue
+
+                # Check if the nodes this depends on have been added already
+                missing_dependencies = [
+                    dep not in node_order
+                    for dep in nodes.get(dep_id, {}).get("depends_on", [])
+                    if dep in dependent_nodes
+                ]
+
+                # If all dependencies met
+                if not any(missing_dependencies) and dep_id not in node_order:
+                    node_order.append(dep_id)
+
+    return node_order[1:]
+
+
+def create_unique_id(project_name: str, node_type: str, schema_name: str,
+                     table_name: str) -> str:
+    """
+    Generate the unique ID for a node
+
+    Parameters
+    ----------
+    project_name : str
+        The name of the project
+    node_type : str
+        The type of the node, e.g. 'source' or 'model'
+    schema_name : str
+        The name of the schema, mainly relevant for source nodes
+    table_name : str
+        The name of the table
+
+    Returns
+    -------
+    str
+        The node unique ID
+
+    Raises
+    ------
+    Exception
+        If the node_type is not recognised
+    """
+    if node_type == "source":
+        return f"source.{project_name}.{schema_name}.{table_name}"
+    elif node_type == "model":
+        return f"model.{project_name}.{table_name}"
+    else:
+        raise Exception(f"Can't recognise data type {node_type}")
+
+
+class MockDBTError:
+    """ For better error messaging, this mimics the CompletedProcess """
+    returncode = 0
+    stdout = ""
+    stderr = ""
+
+    def __init__(self, **kwargs) -> None:
+        for k, v in kwargs.items():
+            setattr(self, k, v)
