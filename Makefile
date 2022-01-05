@@ -47,7 +47,7 @@ lint-convert:
 
 test:
 	make clean-tests
-	pytest ./tests --junitxml=pytest_report_junit.xml
+	pytest ./unit_tests --junitxml=pytest_report_junit.xml
 
 qa:
 	make lint
