@@ -1,4 +1,5 @@
 from ipaddress import ip_network
+from pulumi.resource import ResourceOptions
 from pulumi_azure_native import network
 
 from base import location, overall_name, resource_group
@@ -104,4 +105,5 @@ databricks_public_subnet = network.Subnet(
             name="databricks", service_name="Microsoft.Databricks/workspaces"
         )
     ],
+    opts=ResourceOptions(depends_on=[databricks_private_subnet])
 )
