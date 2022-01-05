@@ -9,6 +9,11 @@ $(eval REGISTRY=$(shell grep '* Registry:' README.md | awk -F ':' '{print $$2}' 
 $(eval REPOSITORY=$(shell grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
 $(eval VERSION=$(shell grep '* Current Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
 
+PROJECT_ROOT := $(realpath .)
+
+setup:
+	cp .env-dist .env
+
 # Package
 
 update-pip:
@@ -63,13 +68,34 @@ build-container:
 push-container:
 	docker push $(REGISTRY)/$(REPOSITORY):$(VERSION)
 
-# Overall
-
 build: build-package build-container
 
 push: push-container
 
 build-and-push: build push
+
+# Infrastructure
+
+PULUMI_FOLDER := ${PROJECT_ROOT}/integration_tests/infrastructure
+PULUMI_ORGANIZATION	:= ingenii
+PULUMI_STACK := ${PULUMI_ORGANIZATION}/databricks-runtime-testing
+PULUMI_PARALLELISM	:= 2
+
+pulumi_init:
+	pulumi --cwd $(PULUMI_FOLDER) stack select $(PULUMI_STACK) --create --color always --non-interactive
+
+pulumi_preview:
+	pulumi --cwd $(PULUMI_FOLDER) preview --stack $(PULUMI_STACK) --color always --diff --non-interactive
+
+pulumi_refresh:
+	pulumi --cwd $(PULUMI_FOLDER) refresh --stack $(PULUMI_STACK) --color always --diff --skip-preview --non-interactive --yes
+
+pulumi_apply:
+	pulumi --cwd $(PULUMI_FOLDER) up --stack $(PULUMI_STACK) --parallel ${PULUMI_PARALLELISM} --color always --diff --skip-preview --non-interactive --yes
+
+pulumi_destroy:
+	pulumi destroy --cwd $(PULUMI_FOLDER) --stack $(PULUMI_STACK) --parallel ${PULUMI_PARALLELISM} --color always
+	pulumi stack rm --cwd $(PULUMI_FOLDER) --stack $(PULUMI_STACK) --non-interactive --yes
 
 # Other
 
