@@ -1,0 +1,43 @@
+version: 2
+
+sources:
+  - name: test_data
+    schema: test_data
+    tables:
+      - name: table0
+        external:
+          using: "delta"
+        join:
+          type: merge_insert
+          column: "date"
+        file_details:
+          sep: ","
+          header: false
+          dateFormat: yyyy-MM-dd
+          timestampFormat: yyyy-MM-dd HH:mm:ss
+        columns:
+          - name: date
+            data_type: "date"
+            tests: 
+              - unique
+              - not_null
+          - name: open
+            data_type: "decimal(18,9)"
+            tests: 
+              - not_null
+          - name: close
+            data_type: "decimal(18,9)"
+            tests: 
+              - not_null
+          - name: volume
+            data_type: "int"
+            tests: 
+              - not_null
+          - name: height
+            data_type: "timestamp"
+            tests: 
+              - not_null
+          - name: isGood
+            data_type: "bool"
+            tests: 
+              - not_null

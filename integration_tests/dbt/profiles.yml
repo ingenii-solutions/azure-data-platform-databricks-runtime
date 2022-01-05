@@ -1,0 +1,15 @@
+databricks:
+  target: engineering
+  outputs:
+    engineering:
+      type: spark
+      method: http
+      host: "{{ env_var('DATABRICKS_WORKSPACE_HOSTNAME') }}"
+      port: 443
+      token: "{{ env_var('DATABRICKS_DBT_TOKEN') }}"
+      cluster: "{{ env_var('DATABRICKS_CLUSTER_NAME') }}"
+      schema: test_data
+      connect_timeout: 30
+      connect_retries: 15
+      threads: 2
+      retry_all: true
