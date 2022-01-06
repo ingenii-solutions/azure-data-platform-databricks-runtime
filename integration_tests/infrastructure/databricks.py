@@ -1,7 +1,8 @@
 from os import getenv
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
-from pulumi_azure_native import authorization, databricks as az_databricks
+from pulumi_azure_native import authorization, databricks as az_databricks, \
+    keyvault
 from pulumi_databricks import databricks, Provider as DatabricksProvider, \
     ProviderArgs as DatabricksProviderArgs
 
@@ -10,8 +11,7 @@ from datalake import datalake, container_names
 from networking import databricks_private_subnet, databricks_public_subnet, \
     vnet
 
-workspace_name = f"{overall_name}-databricks-workspace"
-
+workspace_name = overall_name
 workspace = az_databricks.Workspace(
     resource_name=workspace_name,
     workspace_name=workspace_name,
@@ -78,6 +78,15 @@ databricks_provider = DatabricksProvider(
     ),
 )
 
+databricks.WorkspaceConf(
+    resource_name=workspace_name,
+    custom_config={
+        "enableDcs": "true",
+        "enableIpAccessLists": "true"
+    },
+    opts=ResourceOptions(provider=databricks_provider),
+)
+
 system_cluster = databricks.Cluster(
     resource_name=f"{workspace_name}-system-cluster",
     cluster_name="system",
@@ -90,12 +99,13 @@ system_cluster = databricks.Cluster(
         "spark.master": "local[*]",
         "spark.databricks.delta.preview.enabled": "true",
     },
+    custom_tags={"ResourceClass": "SingleNode"},
     opts=ResourceOptions(provider=databricks_provider),
 )
 
 secret_scope_name = "main"
 secret_scope = databricks.SecretScope(
-    resource_name=f"{workspace.name}-secret-scope-main",
+    resource_name=f"{workspace_name}-secret-scope-{secret_scope_name}",
     name=secret_scope_name,
     opts=ResourceOptions(provider=databricks_provider),
 )
