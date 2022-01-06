@@ -1,12 +1,12 @@
 from os import getenv
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
-from pulumi_azure_native import authorization, databricks as az_databricks, \
-    keyvault
+from pulumi_azure_native import authorization, databricks as az_databricks
 from pulumi_databricks import databricks, Provider as DatabricksProvider, \
     ProviderArgs as DatabricksProviderArgs
 
 from base import azure_client, location, overall_name, resource_group
+from current_version import docker_image_url
 from datalake import datalake, container_names
 from networking import databricks_private_subnet, databricks_public_subnet, \
     vnet
@@ -136,3 +136,50 @@ for container_name in container_names:
             delete_before_replace=True,
         ),
     )
+
+# DBT TOKEN
+dbt_token_name = f"testing-token-for-dbt"
+dbt_token_resource_name = f"{workspace_name}-token-for-dbt"
+
+# Also used to generate the DBT documentation by the DevOps pipeline
+dbt_token = databricks.Token(
+    resource_name=dbt_token_resource_name,
+    comment="Data Build Tool Token - Used for DBT automation",
+    opts=ResourceOptions(provider=databricks_provider),
+)
+
+dbt_token_as_scope_secret = databricks.Secret(
+    resource_name=dbt_token_resource_name,
+    scope=secret_scope.id,
+    string_value=dbt_token.token_value,
+    key=dbt_token_name,
+    opts=ResourceOptions(provider=databricks_provider),
+)
+
+# Testing cluster
+testing_cluster = databricks.Cluster(
+    resource_name=f"{workspace_name}-testing-cluster",
+    cluster_name="testing",
+    spark_version="9.1.x-scala2.12",
+    node_type_id="Standard_F4s",
+    is_pinned=True,
+    autotermination_minutes=10,
+    docker_image=databricks.ClusterDockerImageArgs(
+        url=docker_image_url
+    ),
+    spark_conf={
+        "spark.databricks.cluster.profile": "singleNode",
+        "spark.master": "local[*]",
+        "spark.databricks.delta.preview.enabled": "true",
+    },
+    spark_env_vars={
+            "DATABRICKS_WORKSPACE_HOSTNAME": workspace.workspace_url,
+            "DATABRICKS_CLUSTER_NAME": "testing",
+            "DBT_TOKEN_SCOPE": secret_scope_name,
+            "DBT_TOKEN_NAME": dbt_token_name,
+            "DBT_ROOT_FOLDER": "/dbfs/mnt/dbt",
+            "DBT_LOGS_FOLDER": "/dbfs/mnt/dbt-logs",
+    },
+    custom_tags={"ResourceClass": "SingleNode"},
+    opts=ResourceOptions(provider=databricks_provider),
+)
