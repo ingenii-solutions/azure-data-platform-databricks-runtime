@@ -34,7 +34,7 @@ datalake = storage.StorageAccount(
 )
 
 container_names = (
-    "dbt", "dbt-logs", "models", "orchestration", "snapshots", "source"
+    "dbt", "dbt-logs", "models", "orchestration", "raw", "snapshots", "source"
 )
 for container_name in container_names:
     storage.BlobContainer(

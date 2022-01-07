@@ -22,6 +22,8 @@ update-pip:
 build-package:
 	python setup.py bdist_wheel
 
+# Lint and Unit tests
+
 clean-all:
 	make clean-lint
 	make clean-package
@@ -96,6 +98,14 @@ pulumi_apply:
 pulumi_destroy:
 	pulumi destroy --cwd $(PULUMI_FOLDER) --stack $(PULUMI_STACK) --parallel ${PULUMI_PARALLELISM} --color always
 	pulumi stack rm --cwd $(PULUMI_FOLDER) --stack $(PULUMI_STACK) --non-interactive --yes
+
+# Integration tests
+
+sync_data:
+	./integration_tests/scripts/data_sync.sh
+
+sync_notebooks:
+	./integration_tests/scripts/notebook_sync.sh
 
 # Other
 
