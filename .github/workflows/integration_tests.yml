@@ -64,11 +64,11 @@ jobs:
           ls integration_tests/notebooks | awk -F '.' '{ print $1 }' | xargs -I {} databricks workspace import -l PYTHON integration_tests/notebooks/{}.py '/Shared/Testing/{}' --overwrite
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_AAD_TOKEN: ${{ secrets.DATABRICKS_AAD_TOKEN }}
+          DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.DATABRICKS_AAD_TOKEN }}
       # ------------------------------------------
       - name: Run tests
         run: python ./integration_tests/scripts/submit_job.py
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
-          DATABRICKS_AAD_TOKEN: ${{ secrets.DATABRICKS_AAD_TOKEN }}
+          DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.DATABRICKS_AAD_TOKEN }}
