@@ -164,6 +164,11 @@ testing_cluster = databricks.Cluster(
     node_type_id="Standard_F4s",
     is_pinned=True,
     autotermination_minutes=10,
+    libraries=[
+        databricks.ClusterLibraryArgs(
+            whl="dbfs:/mnt/preprocess/pre_process-1.0.0-py3-none-any.whl"
+        )
+    ],
     docker_image=databricks.ClusterDockerImageArgs(
         url=docker_image_url
     ),
