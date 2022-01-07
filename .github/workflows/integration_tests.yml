@@ -25,7 +25,9 @@ jobs:
       - name: Get data lake key
         id: data_lake_key
         run: |
-          echo ::set-output name=DATA_LAKE_KEY::$(az storage account keys list --account-name $DATA_LAKE_NAME --query '[0].value' -o tsv)
+          DATA_LAKE_KEY=$(az storage account keys list --account-name $DATA_LAKE_NAME --query '[0].value' -o tsv)
+          echo ::add-mask::$DATA_LAKE_KEY
+          echo ::set-output name=DATA_LAKE_KEY::$DATA_LAKE_KEY
         env:
           DATA_LAKE_NAME: ${{ secrets.DATA_LAKE_NAME }}
       # ----------------------------------------
