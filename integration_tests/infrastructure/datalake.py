@@ -16,7 +16,8 @@ datalake = storage.StorageAccount(
             default_action=storage.DefaultAction.DENY,
             virtual_network_rules=[
                 storage.VirtualNetworkRuleArgs(
-                    virtual_network_resource_id=subnet.id
+                    virtual_network_resource_id=subnet.id,
+                    state="Succeeded",
                 )
                 for subnet in (
                     databricks_public_subnet,

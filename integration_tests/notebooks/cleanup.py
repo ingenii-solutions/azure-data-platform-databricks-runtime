@@ -6,8 +6,8 @@
 # COMMAND ----------
 
 for known_table in spark.sql("SHOW TABLES FROM test_data").collect():
-    spark.sql(f"DELETE FROM test_data.{known_table.table}")
-    spark.sql(f"DROP TABLE IF EXISTS test_data.{known_table.table}")
+    spark.sql(f"DELETE FROM test_data.{known_table.tableName}")
+    spark.sql(f"DROP TABLE IF EXISTS test_data.{known_table.tableName}")
 
 # COMMAND ----------
 

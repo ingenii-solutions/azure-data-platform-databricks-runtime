@@ -14,12 +14,14 @@ vnet = network.VirtualNetwork(
     address_space=network.AddressSpaceArgs(
         address_prefixes=[vnet_address_space]
     ),
+    opts=ResourceOptions(ignore_changes=["subnets"]),
 )
 
 nsg = network.NetworkSecurityGroup(
     resource_name=overall_name,
     network_security_group_name=overall_name,
     resource_group_name=resource_group.name,
+    opts=ResourceOptions(ignore_changes=["security_rules"]),
 )
 main_route_table = network.RouteTable(
     resource_name=overall_name,

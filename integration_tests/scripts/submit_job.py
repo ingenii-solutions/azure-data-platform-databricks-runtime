@@ -50,7 +50,7 @@ while task_running:
     job_details = db.jobs.get_run(clean_job_details["run_id"])
 
     print("\n\t".join([f"Current state: {job_details['state']}"] + [
-        str(task)
+        f"Task: {task['task_key']}, state: {task['state']}"
         for task in job_details["tasks"]
     ]))
 
@@ -58,8 +58,13 @@ while task_running:
         task_running = False
 
     if iter > breakout:
+        print(job_details)
         raise Exception(f"Reached {breakout} attempts and job not resolved")
     iter += 1
 
     if task_running:
         sleep(60)
+
+if job_details["state"]["result_state"] != "SUCCESS":
+    print(job_details)
+    raise Exception("Testing did not complete successfully!")
