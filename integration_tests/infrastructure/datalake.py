@@ -1,7 +1,7 @@
 from pulumi import ResourceOptions
 from pulumi_azure_native import storage
 
-from base import location, overall_name, resource_group
+from base import location, overall_name, resource_group, runner_ip
 from networking import databricks_public_subnet, databricks_private_subnet
 
 datalake_name = overall_name.replace("-", "")
@@ -14,6 +14,7 @@ datalake = storage.StorageAccount(
        storage.NetworkRuleSetArgs(
             bypass=storage.Bypass.AZURE_SERVICES,
             default_action=storage.DefaultAction.DENY,
+            ip_rules=[storage.IPRuleArgs(i_p_address_or_range=runner_ip)],
             virtual_network_rules=[
                 storage.VirtualNetworkRuleArgs(
                     virtual_network_resource_id=subnet.id,
