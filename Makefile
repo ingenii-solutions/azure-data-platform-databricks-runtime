@@ -101,10 +101,10 @@ pulumi_destroy:
 
 # Integration tests
 
-sync_data:
+data_sync:
 	./integration_tests/scripts/data_sync.sh
 
-sync_notebooks:
+notebook_sync:
 	./integration_tests/scripts/notebook_sync.sh
 
 run_integration_tests:

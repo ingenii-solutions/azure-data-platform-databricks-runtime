@@ -16,10 +16,30 @@ clean_job_details = db.jobs.submit_run(
             "notebook_task": {
                 "notebook_path": "/Shared/Testing/cleanup",
             }
+        },
+        {
+            "task_key": "Test",
+            "existing_cluster_id": getenv("DATABRICKS_CLUSTER_ID"),
+            "depends_on": [
+                {
+                    "task_key": "Clean"
+                },
+            ],
+            "notebook_task": {
+                "notebook_path": "/Shared/Testing/ingest_data",
+            }
         }
     ],
     version="2.1",
 )
+
+job_details = db.jobs.get_run(clean_job_details["run_id"])
+
+print("\n\t".join([
+    "Job submitted",
+    f"Job ID: {job_details['job_id']}, Run ID: {job_details['job_id']}",
+    f"URL: {job_details['run_page_url']}"
+]))
 
 breakout = 20
 iter = 1
@@ -29,7 +49,10 @@ while task_running:
 
     job_details = db.jobs.get_run(clean_job_details["run_id"])
 
-    print(job_details)
+    print("\n\t".join([f"Current state: {job_details['state']}"] + [
+        str(task)
+        for task in job_details["tasks"]
+    ]))
 
     if "result_state" in job_details["state"]:
         task_running = False

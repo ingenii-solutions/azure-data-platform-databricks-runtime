@@ -33,8 +33,8 @@ datalake = storage.StorageAccount(
     sku=storage.SkuArgs(name=storage.SkuName.STANDARD_GRS),
 )
 
-container_names = ("dbt", "dbt-logs", "models", "orchestration", "preprocess",
-                   "raw", "snapshots", "source")
+container_names = ("archive", "dbt", "dbt-logs", "models", "orchestration",
+                   "preprocess", "raw", "snapshots", "source")
 for container_name in container_names:
     storage.BlobContainer(
         resource_name=f"datalake-container-{container_name}",

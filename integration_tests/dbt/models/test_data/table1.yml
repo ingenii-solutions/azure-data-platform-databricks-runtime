@@ -38,6 +38,6 @@ sources:
             tests: 
               - not_null
           - name: isGood
-            data_type: "bool"
+            data_type: "boolean"
             tests: 
               - not_null
