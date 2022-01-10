@@ -6,26 +6,27 @@ from networking import databricks_public_subnet, databricks_private_subnet
 
 datalake_name = overall_name.replace("-", "")
 
+# While we don't have a runner
+#    network_rule_set=storage.NetworkRuleSetArgs(
+#        bypass=storage.Bypass.AZURE_SERVICES,
+#        default_action=storage.DefaultAction.DENY,
+#        ip_rules=[storage.IPRuleArgs(i_p_address_or_range=runner_ip)],
+#        virtual_network_rules=[
+#            storage.VirtualNetworkRuleArgs(
+#                virtual_network_resource_id=subnet.id,
+#                state="Succeeded",
+#            )
+#            for subnet in (databricks_public_subnet, databricks_private_subnet)
+#        ],
+#    ),
+
 datalake = storage.StorageAccount(
     resource_name=datalake_name,
     account_name=datalake_name,
     allow_blob_public_access=False,
-    network_rule_set=(
-       storage.NetworkRuleSetArgs(
-            bypass=storage.Bypass.AZURE_SERVICES,
-            default_action=storage.DefaultAction.DENY,
-            ip_rules=[storage.IPRuleArgs(i_p_address_or_range=runner_ip)],
-            virtual_network_rules=[
-                storage.VirtualNetworkRuleArgs(
-                    virtual_network_resource_id=subnet.id,
-                    state="Succeeded",
-                )
-                for subnet in (
-                    databricks_public_subnet,
-                    databricks_private_subnet
-                )
-            ],
-        )
+    network_rule_set=storage.NetworkRuleSetArgs(
+        bypass=storage.Bypass.AZURE_SERVICES,
+        default_action=storage.DefaultAction.ALLOW,
     ),
     is_hns_enabled=True,
     kind=storage.Kind.STORAGE_V2,
