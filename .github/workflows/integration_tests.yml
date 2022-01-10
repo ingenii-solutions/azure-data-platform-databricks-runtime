@@ -14,12 +14,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v2
       # ----------------------------------------
-      - name: Debug
-        run: |
-          whoami
-          pwd
-          ls -la
-      # ----------------------------------------
       - name: Log in to Azure
         run: |
           az login --service-principal -t ${ARM_TENANT_ID} -u ${ARM_CLIENT_ID} -p ${ARM_CLIENT_SECRET}
@@ -67,6 +61,7 @@ jobs:
       # ----------------------------------------
       - name: Sync Databricks notebookes
         run: |
+          pip install databricks-cli
           databricks configure --aad-token --host https://${DATABRICKS_HOST}
           databricks workspace mkdirs '/Shared/Testing'
           ls integration_tests/notebooks | awk -F '.' '{ print $1 }' | xargs -I {} databricks workspace import -l PYTHON integration_tests/notebooks/{}.py '/Shared/Testing/{}' --overwrite
