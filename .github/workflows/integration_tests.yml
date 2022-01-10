@@ -1,0 +1,80 @@
+name: Run Integration Tests
+on:
+  pull_request:
+  release:
+    types: [published]
+env:
+  IMAGE_NAME: "ingeniisolutions/azure-data-platform-iac-runtime"
+  PLATFORMS: "linux/amd64,linux/arm64"
+jobs:
+  test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      # ----------------------------------------
+      - name: Log in to Azure
+        run: |
+          az login --service-principal -t ${ARM_TENANT_ID} -u ${ARM_CLIENT_ID} -p ${ARM_CLIENT_SECRET}
+        env:
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      # ----------------------------------------
+      - name: Get data lake key
+        id: data_lake_key
+        run: |
+          DATA_LAKE_KEY=$(az storage account keys list --account-name $DATA_LAKE_NAME --query '[0].value' -o tsv)
+          echo ::add-mask::$DATA_LAKE_KEY
+          echo ::set-output name=DATA_LAKE_KEY::$DATA_LAKE_KEY
+        env:
+          DATA_LAKE_NAME: ${{ secrets.DATA_LAKE_NAME }}
+      # ----------------------------------------
+      - name: Sync dbt
+        run: |
+          az storage blob sync --account-name $DATA_LAKE_NAME --account-key $DATA_LAKE_KEY -c dbt -s integration_tests/dbt --only-show-errors
+        env:
+          DATA_LAKE_NAME: ${{ secrets.DATA_LAKE_NAME }}
+          DATA_LAKE_KEY: ${{ steps.data_lake_key.outputs.DATA_LAKE_KEY }}
+      # ------------------------------------------
+      - name: Sync data
+        run: |
+          az storage blob sync --account-name $DATA_LAKE_NAME --account-key $DATA_LAKE_KEY -c raw -s integration_tests/data -d test_data --only-show-errors
+        env:
+          DATA_LAKE_NAME: ${{ secrets.DATA_LAKE_NAME }}
+          DATA_LAKE_KEY: ${{ steps.data_lake_key.outputs.DATA_LAKE_KEY }}
+      # ------------------------------------------
+      - name: Sync pre-process
+        run: |
+          az storage blob sync --account-name $DATA_LAKE_NAME --account-key $DATA_LAKE_KEY -c preprocess -s integration_tests/preprocess --only-show-errors
+        env:
+          DATA_LAKE_NAME: ${{ secrets.DATA_LAKE_NAME }}
+          DATA_LAKE_KEY: ${{ steps.data_lake_key.outputs.DATA_LAKE_KEY }}
+      # ----------------------------------------
+      - name: Get Databricks AAD token
+        id: databricks_aad_token
+        run: |
+          echo ::set-output name=DATABRICKS_AAD_TOKEN::$(az account get-access-token  --subscription ${ARM_SUBSCRIPTION_ID} --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d | jq '.accessToken' --raw-output)
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      # ----------------------------------------
+      - name: Install required
+        run: |
+          pip install -r requirements-test.txt
+      # ----------------------------------------
+      - name: Sync Databricks notebookes
+        run: |
+          databricks configure --aad-token --host https://${DATABRICKS_HOST}
+          databricks workspace mkdirs '/Shared/Testing'
+          ls integration_tests/notebooks | awk -F '.' '{ print $1 }' | xargs -I {} databricks workspace import -l PYTHON integration_tests/notebooks/{}.py '/Shared/Testing/{}' --overwrite
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.DATABRICKS_AAD_TOKEN }}
+      # ------------------------------------------
+      - name: Run tests
+        run: python ./integration_tests/scripts/submit_job.py
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+          DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.DATABRICKS_AAD_TOKEN }}
