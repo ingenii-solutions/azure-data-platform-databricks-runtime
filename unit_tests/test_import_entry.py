@@ -25,23 +25,34 @@ class TestInitialisation(TestCase):
     processed_file_name = "processed_file_name"
     increment = 0
 
-    def test_entry_doesnt_exist_create(self):
-        """ Creates new entry if one doesn't exist """
-
-        import_table_df_mock = Mock(
-            return_value=Mock(
-                where=Mock(
-                    return_value=Mock(
-                        rdd=Mock(isEmpty=Mock(return_value=True))
-                    )
+    no_import_entry_mock = Mock(
+        return_value=Mock(
+            where=Mock(
+                return_value=Mock(
+                    rdd=Mock(isEmpty=Mock(return_value=True))
                 )
             )
         )
+    )
+    existing_import_entry_mock = Mock(
+        return_value=Mock(
+            where=Mock(
+                return_value=Mock(
+                    rdd=Mock(isEmpty=Mock(return_value=False)),
+                    first=Mock(return_value=Mock(hash=row_hash))
+                )
+            )
+        )
+    )
+
+    def test_entry_doesnt_exist_create(self):
+        """ Creates new entry if one doesn't exist """
+
         create_import_entry_mock = Mock()
         get_import_entry_mock = Mock()
 
         with \
-                patch(f"{class_str}.get_import_table_df", import_table_df_mock), \
+                patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock), \
                 patch(f"{class_str}.create_import_entry", create_import_entry_mock), \
                 patch(f"{class_str}.get_import_entry", get_import_entry_mock):
             ImportFileEntry(
@@ -59,17 +70,7 @@ class TestInitialisation(TestCase):
     def test_entry_doesnt_exist_create_wrong_increment(self):
         """ Increment is 1, entry with increment 0 doesn't exist """
 
-        import_table_df_mock = Mock(
-            return_value=Mock(
-                where=Mock(
-                    return_value=Mock(
-                        rdd=Mock(isEmpty=Mock(return_value=True))
-                    )
-                )
-            )
-        )
-
-        with patch(f"{class_str}.get_import_table_df", import_table_df_mock):
+        with patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock):
             self.assertRaises(
                 MissingEntryException, ImportFileEntry,
                 spark=Mock(),
@@ -80,17 +81,7 @@ class TestInitialisation(TestCase):
     def test_entry_doesnt_exist_dont_create(self):
         """ Entry doesn't exist, and set to not create one """
 
-        import_table_df_mock = Mock(
-            return_value=Mock(
-                where=Mock(
-                    return_value=Mock(
-                        rdd=Mock(isEmpty=Mock(return_value=True))
-                    )
-                )
-            )
-        )
-
-        with patch(f"{class_str}.get_import_table_df", import_table_df_mock):
+        with patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock):
             self.assertRaises(
                 MissingEntryException, ImportFileEntry,
                 spark=Mock(),
@@ -102,21 +93,11 @@ class TestInitialisation(TestCase):
     def test_entry_exists(self):
         """ Entry exists, and successfully retrieved """
 
-        import_table_df_mock = Mock(
-            return_value=Mock(
-                where=Mock(
-                    return_value=Mock(
-                        rdd=Mock(isEmpty=Mock(return_value=False)),
-                        first=Mock(return_value=Mock(hash=self.row_hash))
-                    )
-                )
-            )
-        )
         create_import_entry_mock = Mock()
         get_import_entry_mock = Mock()
 
         with \
-                patch(f"{class_str}.get_import_table_df", import_table_df_mock), \
+                patch(f"{class_str}.get_import_table_df", self.existing_import_entry_mock), \
                 patch(f"{class_str}.create_import_entry", create_import_entry_mock), \
                 patch(f"{class_str}.get_import_entry", get_import_entry_mock):
             import_entry = ImportFileEntry(
