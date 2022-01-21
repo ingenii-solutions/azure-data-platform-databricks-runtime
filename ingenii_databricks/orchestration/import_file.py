@@ -17,6 +17,10 @@ class MissingEntryException(Exception):
     ...
 
 
+class MissingFileException(Exception):
+    ...
+
+
 class ImportFileEntry(OrchestrationTable):
     """
     Object to interact with the status of an individual file's status
@@ -241,8 +245,6 @@ class ImportFileEntry(OrchestrationTable):
         ]
         if processed_file_name:
             expected_paths.extend([
-                mnt_path("raw",
-                         source_name, table_name, processed_file_name),
                 mnt_path("archive",
                          source_name, table_name, processed_file_name),
                 mnt_path("archive", "before_pre_processing",
@@ -252,10 +254,11 @@ class ImportFileEntry(OrchestrationTable):
             path.exists("/dbfs" + e_path)
             for e_path in expected_paths
                 ]):
-            raise Exception(
+            raise MissingFileException(
                 f"Trying to create a new orchestration.import_file "
                 f"entry, but file does not exist! Can't see a file "
-                f"at any of {expected_paths}")
+                f"at any of {expected_paths}"
+            )
 
         # Create the entry
         datetime_now = datetime.utcnow()

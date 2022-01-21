@@ -11,9 +11,11 @@ sys.modules["pyspark.sql.session"] = Mock()
 sys.modules["pyspark.sql.types"] = Mock()
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
-from ingenii_databricks.orchestration.import_file import MissingEntryException  # noqa: E402
+from ingenii_databricks.orchestration.import_file import \
+    MissingEntryException, MissingFileException  # noqa: E402
 
-class_str = "ingenii_databricks.orchestration.ImportFileEntry"
+file_str = "ingenii_databricks.orchestration"
+class_str = f"{file_str}.ImportFileEntry"
 
 
 class TestInitialisation(TestCase):
@@ -110,3 +112,127 @@ class TestInitialisation(TestCase):
         get_import_entry_mock.assert_called_once()
 
         self.assertEqual(self.row_hash, import_entry.hash)
+
+    def test_entry_initialised_with_hash(self):
+
+        get_import_table_df_mock = Mock()
+        create_import_entry_mock = Mock()
+        get_import_entry_mock = Mock()
+
+        with \
+                patch(f"{class_str}.get_import_table_df", get_import_table_df_mock), \
+                patch(f"{class_str}.create_import_entry", create_import_entry_mock), \
+                patch(f"{class_str}.get_import_entry", get_import_entry_mock):
+            import_entry = ImportFileEntry(
+                spark=Mock(),
+                row_hash=self.row_hash
+            )
+
+        get_import_table_df_mock.assert_not_called()
+        create_import_entry_mock.assert_not_called()
+        get_import_entry_mock.assert_called_once()
+
+        self.assertEqual(self.row_hash, import_entry.hash)
+
+    def test_create_import_entry_paths_checked(self):
+        """ Creates new entry if one doesn't exist """
+
+        path_exists_mock = Mock(return_value=True)
+        get_import_entry_mock = Mock()
+        spark_mock = Mock(
+            createDataFrame=Mock(
+                return_value=Mock(
+                    withColumn=Mock(
+                        return_value=Mock(
+                            columns=["col1", "col2"]
+                        )
+                    )
+                )
+            )
+        )
+
+        with \
+                patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock), \
+                patch(f"{class_str}.get_import_entry", get_import_entry_mock), \
+                patch("os.path.exists", path_exists_mock):
+            ImportFileEntry(
+                spark=spark_mock,
+                source_name=self.source_name, table_name=self.table_name,
+                file_name=self.file_name, increment=self.increment,
+            )
+
+        sub_path = f"{self.source_name}/{self.table_name}/{self.file_name}"
+        paths_to_check = [
+            f"/dbfs/mnt/raw/{sub_path}",
+            f"/dbfs/mnt/archive/{sub_path}",
+        ]
+
+        paths_checked = [call[0][0] for call in path_exists_mock.call_args_list]
+        self.assertEqual(len(paths_to_check), len(paths_checked))
+        self.assertEqual(set(paths_to_check), set(paths_checked))
+
+        # Finally
+        get_import_entry_mock.assert_called_once()
+
+    def test_create_import_entry_paths_checked_preprocess(self):
+        """ Creates new entry if one doesn't exist """
+
+        path_exists_mock = Mock(return_value=True)
+        get_import_entry_mock = Mock()
+        spark_mock = Mock(
+            createDataFrame=Mock(
+                return_value=Mock(
+                    withColumn=Mock(
+                        return_value=Mock(
+                            columns=["col1", "col2"]
+                        )
+                    )
+                )
+            )
+        )
+
+        with \
+                patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock), \
+                patch(f"{class_str}.get_import_entry", get_import_entry_mock), \
+                patch("os.path.exists", path_exists_mock):
+            ImportFileEntry(
+                spark=spark_mock,
+                source_name=self.source_name, table_name=self.table_name,
+                file_name=self.file_name, increment=self.increment,
+                processed_file_name=self.processed_file_name
+            )
+
+        sub_path = f"{self.source_name}/{self.table_name}/{self.file_name}"
+        sub_path_2 = f"{self.source_name}/{self.table_name}/{self.processed_file_name}"
+        paths_to_check = [
+            f"/dbfs/mnt/raw/{sub_path}",
+            f"/dbfs/mnt/archive/{sub_path}",
+            f"/dbfs/mnt/archive/{sub_path_2}",
+            f"/dbfs/mnt/archive/before_pre_processing/{sub_path}",
+        ]
+
+        paths_checked = [call[0][0] for call in path_exists_mock.call_args_list]
+        self.assertEqual(len(paths_to_check), len(paths_checked))
+        self.assertEqual(set(paths_to_check), set(paths_checked))
+
+        # Finally
+        get_import_entry_mock.assert_called_once()
+
+    def test_create_import_entry_file_missing(self):
+        """ Creates new entry if one doesn't exist """
+
+        path_exists_mock = Mock(return_value=False)
+        get_import_entry_mock = Mock()
+        with \
+                patch(f"{class_str}.get_import_table_df", self.no_import_entry_mock), \
+                patch(f"{class_str}.get_import_entry", get_import_entry_mock), \
+                patch("os.path.exists", path_exists_mock):
+
+            self.assertRaises(
+                MissingFileException, ImportFileEntry,
+                spark=Mock(),
+                source_name=self.source_name, table_name=self.table_name,
+                file_name=self.file_name, increment=self.increment,
+            )
+
+        get_import_entry_mock.assert_not_called()
