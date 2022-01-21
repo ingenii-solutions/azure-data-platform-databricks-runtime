@@ -475,12 +475,8 @@ class ImportFileEntry(OrchestrationTable):
         str
             The full file path
         """
-        if self.processed_file_name:
-            return get_folder_path("raw", self.source, self.table) + \
-                "/" + self.processed_file_name
-        else:
-            return get_folder_path("raw", self.source, self.table) + \
-                "/" + self.file_name
+        return get_folder_path("raw", self.source, self.table) + \
+            "/" + self.file_name
 
     def get_file_table_name(self) -> str:
         """
