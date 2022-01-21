@@ -138,39 +138,41 @@ class TestFileFolderPaths(TestCase):
         )
         self.import_entry._details[ImportColumns.HASH] *= -1
 
+    source_table_folder_path = f"/mnt/source/{source_name}/{table_name}"
+
     def test_get_file_table_folder_path(self):
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}"
+            f"{self.source_table_folder_path}_{self.row_hash}"
         )
 
         self.import_entry.increment = 1
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_1"
+            f"{self.source_table_folder_path}_{self.row_hash}_1"
         )
         self.import_entry.increment = 3
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_3"
+            f"{self.source_table_folder_path}_{self.row_hash}_3"
         )
         self.import_entry.increment = 0
 
         self.import_entry._details[ImportColumns.HASH] *= -1
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}"
+            f"{self.source_table_folder_path}_m{self.row_hash}"
         )
 
         self.import_entry.increment = 1
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_1"
+            f"{self.source_table_folder_path}_m{self.row_hash}_1"
         )
         self.import_entry.increment = 3
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_3"
+            f"{self.source_table_folder_path}_m{self.row_hash}_3"
         )
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
@@ -248,34 +250,34 @@ class TestFileFolderPaths(TestCase):
     def test_get_review_table_folder_path(self):
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_1"
+            f"{self.source_table_folder_path}_{self.row_hash}_1"
         )
         self.import_entry.increment = 1
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_2"
+            f"{self.source_table_folder_path}_{self.row_hash}_2"
         )
         self.import_entry.increment = 3
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_4"
+            f"{self.source_table_folder_path}_{self.row_hash}_4"
         )
         self.import_entry.increment = 0
 
         self.import_entry._details[ImportColumns.HASH] *= -1
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_1"
+            f"{self.source_table_folder_path}_m{self.row_hash}_1"
         )
         self.import_entry.increment = 1
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_2"
+            f"{self.source_table_folder_path}_m{self.row_hash}_2"
         )
         self.import_entry.increment = 3
         self.assertEqual(
             self.import_entry.get_review_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_4"
+            f"{self.source_table_folder_path}_m{self.row_hash}_4"
         )
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
