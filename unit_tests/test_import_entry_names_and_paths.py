@@ -1,23 +1,14 @@
-from ast import Import
-from datetime import datetime
-from pyspark.sql.types import StructField, StructType, IntegerType, \
-    StringType, TimestampType
 import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-sys.modules["delta.tables"] = Mock()
-# sys.modules["pyspark"] = Mock()
-# sys.modules["pyspark.sql"] = Mock()
-# sys.modules["pyspark.sql.dataframe"] = Mock()
+sys.modules["delta.tables"] = delta_tables_mock = Mock()
 sys.modules["pyspark.sql.functions"] = functions_mock = Mock(
     hash=Mock(return_value="mock hash")
 )
-# sys.modules["pyspark.sql.session"] = Mock()
-# sys.modules["pyspark.sql.types"] = pyspark_sql_types_mock = Mock()
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
-from ingenii_databricks.enums import ImportColumns
+from ingenii_databricks.enums import ImportColumns  # noqa: E402
 
 file_str = "ingenii_databricks.orchestration"
 class_str = f"{file_str}.ImportFileEntry"
@@ -150,12 +141,141 @@ class TestFileFolderPaths(TestCase):
     def test_get_file_table_folder_path(self):
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}{self.row_hash}"
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}"
         )
+
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_file_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_1"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_file_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_3"
+        )
+        self.import_entry.increment = 0
 
         self.import_entry._details[ImportColumns.HASH] *= -1
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"/mnt/source/{self.source_name}/{self.table_name}-{self.row_hash}"
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}"
         )
+
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_file_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_1"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_file_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_3"
+        )
+        self.import_entry.increment = 0
+        self.import_entry._details[ImportColumns.HASH] *= -1
+
+    def test_get_review_table_name(self):
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
+
+        self.import_entry._details[ImportColumns.HASH] *= -1
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_m{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_m{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_review_table_name(),
+            f"{self.table_name}_m{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
+        self.import_entry._details[ImportColumns.HASH] *= -1
+
+    def test_get_full_review_table_name(self):
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
+
+        self.import_entry._details[ImportColumns.HASH] *= -1
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_m{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_m{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}_m{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
+        self.import_entry._details[ImportColumns.HASH] *= -1
+
+    def test_get_review_table_folder_path(self):
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
+
+        self.import_entry._details[ImportColumns.HASH] *= -1
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_1"
+        )
+        self.import_entry.increment = 1
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_2"
+        )
+        self.import_entry.increment = 3
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            f"/mnt/source/{self.source_name}/{self.table_name}_m{self.row_hash}_4"
+        )
+        self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
