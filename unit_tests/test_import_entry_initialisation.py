@@ -6,14 +6,9 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 sys.modules["delta.tables"] = Mock()
-# sys.modules["pyspark"] = Mock()
-# sys.modules["pyspark.sql"] = Mock()
-# sys.modules["pyspark.sql.dataframe"] = Mock()
 sys.modules["pyspark.sql.functions"] = functions_mock = Mock(
     hash=Mock(return_value="mock hash")
 )
-# sys.modules["pyspark.sql.session"] = Mock()
-# sys.modules["pyspark.sql.types"] = pyspark_sql_types_mock = Mock()
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
 from ingenii_databricks.orchestration.import_file import \
@@ -120,6 +115,7 @@ class TestInitialisation(TestCase):
         self.assertEqual(self.row_hash, import_entry.hash)
 
     def test_entry_initialised_with_hash(self):
+        """ ImportEntry initialised with just the row hash """
 
         get_import_table_df_mock = Mock()
         create_import_entry_mock = Mock()
@@ -141,7 +137,7 @@ class TestInitialisation(TestCase):
         self.assertEqual(self.row_hash, import_entry.hash)
 
     def test_create_import_entry_paths_checked(self):
-        """ Creates new entry if one doesn't exist """
+        """ All is well if file in an expected path """
 
         path_exists_mock = Mock(return_value=True)
         get_import_entry_mock = Mock()
@@ -181,7 +177,7 @@ class TestInitialisation(TestCase):
         get_import_entry_mock.assert_called_once()
 
     def test_create_import_entry_paths_checked_preprocess(self):
-        """ Creates new entry if one doesn't exist """
+        """ Preprocessed file not in expected paths """
 
         path_exists_mock = Mock(return_value=True)
         get_import_entry_mock = Mock()
@@ -225,7 +221,7 @@ class TestInitialisation(TestCase):
         get_import_entry_mock.assert_called_once()
 
     def test_create_import_entry_file_missing(self):
-        """ Creates new entry if one doesn't exist """
+        """ File not in expected paths """
 
         path_exists_mock = Mock(return_value=False)
         get_import_entry_mock = Mock()
@@ -244,7 +240,7 @@ class TestInitialisation(TestCase):
         get_import_entry_mock.assert_not_called()
 
     def test_create_import_entry_data(self):
-        """ Creates new entry if one doesn't exist """
+        """ Creates the row and inserts correctly """
 
         path_exists_mock = Mock(return_value=True)
         get_import_entry_mock = Mock()
@@ -279,19 +275,34 @@ class TestInitialisation(TestCase):
         df_args, df_kwargs = spark_mock.createDataFrame.call_args_list[0]
         self.assertTupleEqual(df_args, ())
         self.assertEqual(len(df_kwargs["data"]), 1)
+        self.assertTrue(isinstance(df_kwargs["schema"], StructType))
+
         for data, col in zip(df_kwargs["data"][0], df_kwargs["schema"]):
+            self.assertTrue(isinstance(col, StructField))
             if col.name == "source":
                 self.assertEqual(data, self.source_name)
+                self.assertEqual(col.nullable, False)
+                self.assertTrue(isinstance(col.dataType, StringType))
             elif col.name == "table":
                 self.assertEqual(data, self.table_name)
+                self.assertEqual(col.nullable, False)
+                self.assertTrue(isinstance(col.dataType, StringType))
             elif col.name == "file_name":
                 self.assertEqual(data, self.file_name)
+                self.assertEqual(col.nullable, False)
+                self.assertTrue(isinstance(col.dataType, StringType))
             elif col.name == "processed_file_name":
                 self.assertEqual(data, None)
+                self.assertEqual(col.nullable, True)
+                self.assertTrue(isinstance(col.dataType, StringType))
             elif col.name == "increment":
                 self.assertEqual(data, self.increment)
+                self.assertEqual(col.nullable, False)
+                self.assertTrue(isinstance(col.dataType, IntegerType))
             elif col.name == "date_new" or col.name == "_date_row_inserted":
                 self.assertTrue(isinstance(data, datetime))
+                self.assertEqual(col.nullable, False)
+                self.assertTrue(isinstance(col.dataType, TimestampType))
             else:
                 raise Exception(f"Unexpected column: {col.name}, {data}")
 
