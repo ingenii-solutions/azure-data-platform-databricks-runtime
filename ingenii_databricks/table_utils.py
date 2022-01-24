@@ -432,10 +432,15 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
         The action to take when merging e.g. updating, or only inserting
     """
 
-    if not MergeType.check_type(merge_type):
+    allowed_types = (
+        MergeType.MERGE_DATE_ROWS,
+        MergeType.MERGE_UPDATE,
+        MergeType.MERGE_INSERT
+    )
+    if merge_type not in allowed_types:
         raise Exception(
             f"{merge_type} not a recognised merge type! "
-            f"Possible types: {MergeType.all_types()}")
+            f"Possible types: {allowed_types}")
 
     # https://github.com/delta-io/delta/blob/master/python/delta/tables.py
     updated_table = \
@@ -445,7 +450,15 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
 
     if merge_type == MergeType.MERGE_DATE_ROWS:
         # Merge, but be careful with _date_row_inserted and _date_row_updated
+        # Used in orchestration.import_file
         updated_table = updated_table \
+            .whenNotMatchedInsert(
+                values={
+                    col_name: f"dataframe.{col_name}"
+                    for col_name in dataframe.columns
+                    if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
+                }
+            ) \
             .whenMatchedUpdate(
                 condition=_difference_condition_string(
                     dataframe.columns, merge_columns),
@@ -454,12 +467,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                     for col_name in dataframe.columns
                     if col_name != ic.DATE_ROW_INSERTED  # Remains the same
                 }
-            ) \
-            .whenNotMatchedInsert(values={
-                col_name: f"dataframe.{col_name}"
-                for col_name in dataframe.columns
-                if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
-            })
+            )
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
         updated_table = updated_table \
@@ -497,8 +505,8 @@ def delete_table_entries(deltatable: DeltaTable, dataframe: DataFrame,
 
     deltatable.alias("deltatable").merge(
         source=dataframe.alias("dataframe"),
-        condition=_match_condition_string(merge_columns)) \
-        .whenMatchedDelete()
+        condition=_match_condition_string(merge_columns)
+    ).whenMatchedDelete()
 
 
 def delete_table_data(spark: SparkSession, database_name: str, table_name: str

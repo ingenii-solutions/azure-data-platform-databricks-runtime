@@ -1,11 +1,13 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
+from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import _difference_condition_string, \
     _match_condition_string, create_database, delete_table, \
-    delete_table_data, get_folder_path, handle_name, handle_major_name, \
-    is_table_metadata, schema_as_dict, schema_as_string, sql_table_name
+    delete_table_entries, delete_table_data, get_folder_path, handle_name, \
+    handle_major_name, is_table_metadata, merge_dataframe_into_table, \
+    schema_as_dict, schema_as_string, sql_table_name
 
 
 class TestTableUtils(TestCase):
@@ -166,6 +168,148 @@ class TestTableUtils(TestCase):
             "deltatable.`col3` <> dataframe.`col3` OR "
             "deltatable.`col_5` <> dataframe.`col_5`"
         )
+
+    def test_merge_dataframe_wrong_type(self):
+        self.assertRaises(
+            Exception, merge_dataframe_into_table,
+            Mock(), Mock(), [], MergeType.INSERT
+        )
+        self.assertRaises(
+            Exception, merge_dataframe_into_table,
+            Mock(), Mock(), [], MergeType.REPLACE
+        )
+        self.assertRaises(
+            Exception, merge_dataframe_into_table,
+            Mock(), Mock(), [], "1234567890"
+        )
+
+    all_columns = [
+        "col1", "col2", "col3", "col4", "col5",
+        "_date_row_inserted", "_date_row_updated"
+    ]
+    merge_columns = ["col1", "col2"]
+    match_string = \
+        "deltatable.col1 = dataframe.col1 AND deltatable.col2 = dataframe.col2"
+    difference_string = \
+        "deltatable.`col3` <> dataframe.`col3` OR " \
+        "deltatable.`col4` <> dataframe.`col4` OR " \
+        "deltatable.`col5` <> dataframe.`col5`"
+
+    def test_merge_dataframe_merge_date_rows(self):
+        merge_table_mock = Mock()
+        dataframe_mock = Mock(columns=self.all_columns)
+        merge_dataframe_into_table(
+            merge_table_mock, dataframe_mock,
+            self.merge_columns, "merge_date_rows")
+
+        merge_table_mock.alias.assert_called_once_with("deltatable")
+        dataframe_mock.alias.assert_called_once_with("dataframe")
+
+        merge_table_mock.alias.return_value.merge.assert_called_once_with(
+            dataframe_mock.alias.return_value, self.match_string
+        )
+
+        updated_table = merge_table_mock.alias.return_value.merge.return_value
+
+        insert_call = updated_table.whenNotMatchedInsert
+        insert_call.assert_called_once()
+        args, kwargs = insert_call.call_args_list[0]
+        self.assertTupleEqual(args, ())
+        self.assertSetEqual(set(kwargs.keys()), {"values"})
+        self.assertDictEqual(
+            kwargs["values"],
+            {
+                "col1": "dataframe.col1",
+                "col2": "dataframe.col2",
+                "col3": "dataframe.col3",
+                "col4": "dataframe.col4",
+                "col5": "dataframe.col5",
+                "_date_row_inserted": "dataframe._date_row_inserted",
+            }
+        )
+
+        update_call = insert_call.return_value.whenMatchedUpdate
+        update_call.assert_called_once()
+        args, kwargs = update_call.call_args_list[0]
+        self.assertTupleEqual(args, ())
+        self.assertSetEqual(set(kwargs.keys()), {"condition", "set"})
+        self.assertEqual(kwargs["condition"], self.difference_string)
+        self.assertDictEqual(
+            kwargs["set"],
+            {
+                "col1": "dataframe.col1",
+                "col2": "dataframe.col2",
+                "col3": "dataframe.col3",
+                "col4": "dataframe.col4",
+                "col5": "dataframe.col5",
+                "_date_row_updated": "dataframe._date_row_updated",
+            }
+        )
+
+        update_call.return_value.execute.assert_called_once_with()
+
+    def test_merge_dataframe_merge_update(self):
+        merge_table_mock = Mock()
+        dataframe_mock = Mock(columns=self.all_columns)
+        merge_dataframe_into_table(
+            merge_table_mock, dataframe_mock,
+            self.merge_columns, "merge_update")
+
+        merge_table_mock.alias.assert_called_once_with("deltatable")
+        dataframe_mock.alias.assert_called_once_with("dataframe")
+
+        merge_table_mock.alias.return_value.merge.assert_called_once_with(
+            dataframe_mock.alias.return_value, self.match_string
+        )
+
+        updated_table = merge_table_mock.alias.return_value.merge.return_value
+
+        insert_call = updated_table.whenNotMatchedInsertAll
+        insert_call.assert_called_once_with()
+
+        update_call = insert_call.return_value.whenMatchedUpdateAll
+        update_call.assert_called_once_with(condition=self.difference_string)
+
+        update_call.return_value.execute.assert_called_once_with()
+
+    def test_merge_dataframe_merge_insert(self):
+        merge_table_mock = Mock()
+        dataframe_mock = Mock(columns=self.all_columns)
+        merge_dataframe_into_table(
+            merge_table_mock, dataframe_mock,
+            self.merge_columns, "merge_insert")
+
+        merge_table_mock.alias.assert_called_once_with("deltatable")
+        dataframe_mock.alias.assert_called_once_with("dataframe")
+
+        merge_table_mock.alias.return_value.merge.assert_called_once_with(
+            dataframe_mock.alias.return_value, self.match_string
+        )
+
+        updated_table = merge_table_mock.alias.return_value.merge.return_value
+
+        insert_call = updated_table.whenNotMatchedInsertAll
+        insert_call.assert_called_once_with()
+
+        insert_call.return_value.execute.assert_called_once_with()
+
+    def test_delete_table_entries(self):
+        deltatable_mock, dataframe_mock = Mock(), Mock()
+        delete_table_entries(
+            deltatable_mock, dataframe_mock, self.merge_columns)
+
+        deltatable_mock.alias.assert_called_once_with("deltatable")
+        dataframe_mock.alias.assert_called_once_with("dataframe")
+
+        merge_call = deltatable_mock.alias.return_value.merge
+        merge_call.assert_called_once()
+        args, kwargs = merge_call.call_args_list[0]
+        self.assertTupleEqual(args, ())
+        self.assertSetEqual(set(kwargs.keys()), {"condition", "source"})
+        self.assertEqual(kwargs["condition"], self.match_string)
+        self.assertEqual(kwargs["source"], dataframe_mock.alias.return_value)
+
+        merge_call.return_value.whenMatchedDelete.assert_called_once_with()
 
     def test_delete_table_data(self):
         for res, opts in self.table_names.items():
