@@ -138,6 +138,30 @@ def handle_major_name(raw_name: str) -> str:
     return handle_name(raw_name).replace("-", "_")
 
 
+def schema_as_dict(schema_list: List) -> List[Dict]:
+    """
+    Given a pyspark-format schema, return this as distionaries of strings
+
+    Parameters
+    ----------
+    schema_list : List
+        The table schema in the pyspark format
+
+    Returns
+    -------
+    List[Dict]
+        The table schema as dictionaries
+    """
+    return [
+        {
+            "name": f.name,
+            "data_type": f.dataType.simpleString(),
+            "nullable": f.nullable
+        }
+        for f in schema_list
+    ]
+
+
 def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
@@ -258,30 +282,6 @@ def sql_table_name(database_name: str, table_name: str) -> str:
         The full SQL-appropriate name
     """
     return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
-
-
-def schema_as_dict(schema_list: List) -> List[Dict]:
-    """
-    Given a pyspark-format schema, return this as distionaries of strings
-
-    Parameters
-    ----------
-    schema_list : List
-        The table schema in the pyspark format
-
-    Returns
-    -------
-    List[Dict]
-        The table schema as dictionaries
-    """
-    return [
-        {
-            "name": f.name,
-            "data_type": f.dataType.simpleString(),
-            "nullable": f.nullable
-        }
-        for f in schema_list
-    ]
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,

@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import delete_table, delete_table_data, \
-    is_table_metadata, schema_as_dict, sql_table_name
+    is_table_metadata, schema_as_dict, schema_as_string, sql_table_name
 
 file_str = "ingenii_databricks.table_utils"
 
@@ -75,24 +75,47 @@ class TestTableUtils(TestCase):
             for opt in opts:
                 self.assertEqual(sql_table_name(opt[0], opt[1]), res)
 
-    def test_schema_as_dict(self):
+    table_schema = ImportFileEntry.table_schema
+    dictionary_schema = [
+        {"name": "hash", "data_type": "int", "nullable": False},
+        {"name": "source", "data_type": "string", "nullable": False},
+        {"name": "table", "data_type": "string", "nullable": False},
+        {"name": "file_name", "data_type": "string", "nullable": False},
+        {"name": "processed_file_name", "data_type": "string", "nullable": True},
+        {"name": "increment", "data_type": "int", "nullable": False},
+        {"name": "date_new", "data_type": "timestamp", "nullable": False},
+        {"name": "date_archived", "data_type": "timestamp", "nullable": True},
+        {"name": "date_staged", "data_type": "timestamp", "nullable": True},
+        {"name": "date_cleaned", "data_type": "timestamp", "nullable": True},
+        {"name": "date_inserted", "data_type": "timestamp", "nullable": True},
+        {"name": "date_completed", "data_type": "timestamp", "nullable": True},
+        {"name": "rows_read", "data_type": "int", "nullable": True},
+        {"name": "_date_row_inserted", "data_type": "timestamp", "nullable": False},
+        {"name": "_date_row_updated", "data_type": "timestamp", "nullable": True},
+    ]
+    string_schema = \
+        "`hash` int NOT NULL, " \
+        "`source` string NOT NULL, " \
+        "`table` string NOT NULL, " \
+        "`file_name` string NOT NULL, " \
+        "`processed_file_name` string, " \
+        "`increment` int NOT NULL, " \
+        "`date_new` timestamp NOT NULL, " \
+        "`date_archived` timestamp, " \
+        "`date_staged` timestamp, " \
+        "`date_cleaned` timestamp, " \
+        "`date_inserted` timestamp, " \
+        "`date_completed` timestamp, " \
+        "`rows_read` int, " \
+        "`_date_row_inserted` timestamp NOT NULL, " \
+        "`_date_row_updated` timestamp"
 
-        table_schema = schema_as_dict(ImportFileEntry.table_schema)
-        expected_schema = [
-            {"name": "hash", "data_type": "int", "nullable": False},
-            {"name": "source", "data_type": "string", "nullable": False},
-            {"name": "table", "data_type": "string", "nullable": False},
-            {"name": "file_name", "data_type": "string", "nullable": False},
-            {"name": "processed_file_name", "data_type": "string", "nullable": True},
-            {"name": "increment", "data_type": "int", "nullable": False},
-            {"name": "date_new", "data_type": "timestamp", "nullable": False},
-            {"name": "date_archived", "data_type": "timestamp", "nullable": True},
-            {"name": "date_staged", "data_type": "timestamp", "nullable": True},
-            {"name": "date_cleaned", "data_type": "timestamp", "nullable": True},
-            {"name": "date_inserted", "data_type": "timestamp", "nullable": True},
-            {"name": "date_completed", "data_type": "timestamp", "nullable": True},
-            {"name": "rows_read", "data_type": "int", "nullable": True},
-            {"name": "_date_row_inserted", "data_type": "timestamp", "nullable": False},
-            {"name": "_date_row_updated", "data_type": "timestamp", "nullable": True},
-        ]
-        self.assertListEqual(table_schema, expected_schema)
+    def test_schema_as_dict(self):
+        self.assertListEqual(
+            schema_as_dict(self.table_schema), self.dictionary_schema
+        )
+
+    def test_schema_as_string(self):
+        self.assertEqual(
+            schema_as_string(self.dictionary_schema), self.string_schema
+        )
