@@ -403,11 +403,14 @@ def _difference_condition_string(all_columns: List[str],
     """
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
+    handled_merge_columns = [handle_name(column) for column in merge_columns]
+
     return " OR ".join([
         f"deltatable.`{handle_name(column)}` <> "
         f"dataframe.`{handle_name(column)}`"
         for column in all_columns
-        if column not in merge_columns and not column.startswith("_")
+        if handle_name(column) not in handled_merge_columns
+        and not column.startswith("_")
     ])
 
 

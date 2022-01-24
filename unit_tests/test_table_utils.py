@@ -2,9 +2,10 @@ from unittest import TestCase
 from unittest.mock import Mock
 
 from ingenii_databricks.orchestration import ImportFileEntry
-from ingenii_databricks.table_utils import delete_table, delete_table_data, \
-    get_folder_path, handle_name, handle_major_name, is_table_metadata, \
-    schema_as_dict, schema_as_string, sql_table_name
+from ingenii_databricks.table_utils import _difference_condition_string, \
+    _match_condition_string, create_database, delete_table, \
+    delete_table_data, get_folder_path, handle_name, handle_major_name, \
+    is_table_metadata, schema_as_dict, schema_as_string, sql_table_name
 
 
 class TestTableUtils(TestCase):
@@ -130,6 +131,51 @@ class TestTableUtils(TestCase):
             self.string_schema_null
         )
 
+    def test_create_database(self):
+        spark_mock = Mock()
+        create_database(spark_mock, "database1")
+
+        spark_mock.sql.assert_called_once_with(
+            "CREATE DATABASE IF NOT EXISTS database1")
+
+    def test_match_condition_string(self):
+        self.assertEqual(
+            _match_condition_string(["col1", "col{2}", "col 4"]),
+            "deltatable.col1 = dataframe.col1 AND "
+            "deltatable.col[2] = dataframe.col[2] AND "
+            "deltatable.col_4 = dataframe.col_4"
+        )
+        self.assertEqual(
+            _match_condition_string("col1,col{2},col 4"),
+            "deltatable.col1 = dataframe.col1 AND "
+            "deltatable.col[2] = dataframe.col[2] AND "
+            "deltatable.col_4 = dataframe.col_4"
+        )
+
+    def test_difference_condition_string(self):
+        all_columns = ["col1", "col{2}", "col3", "col 4", "col 5", "_col_6"]
+        merge_columns_1 = ["col1", "col{2}", "col_4"]
+        merge_columns_2 = "col1,col[2],col 4"
+        self.assertEqual(
+            _difference_condition_string(all_columns, merge_columns_1),
+            "deltatable.`col3` <> dataframe.`col3` OR "
+            "deltatable.`col_5` <> dataframe.`col_5`"
+        )
+        self.assertEqual(
+            _difference_condition_string(all_columns, merge_columns_2),
+            "deltatable.`col3` <> dataframe.`col3` OR "
+            "deltatable.`col_5` <> dataframe.`col_5`"
+        )
+
+    def test_delete_table_data(self):
+        for res, opts in self.table_names.items():
+            for opt in opts:
+                spark_session = Mock()
+                delete_table_data(spark_session, opt[0], opt[1])
+                spark_session.sql.assert_called_once_with(
+                    f"DELETE FROM {res}"
+                )
+
     def test_delete_table(self):
         for res, opts in self.table_names.items():
             for opt in opts:
@@ -143,12 +189,3 @@ class TestTableUtils(TestCase):
                 args, kwargs = calls[1]
                 self.assertEqual(args, (f"DROP TABLE IF EXISTS {res}",))
                 self.assertDictEqual(kwargs, {})
-
-    def test_delete_table_data(self):
-        for res, opts in self.table_names.items():
-            for opt in opts:
-                spark_session = Mock()
-                delete_table_data(spark_session, opt[0], opt[1])
-                spark_session.sql.assert_called_once_with(
-                    f"DELETE FROM {res}"
-                )
