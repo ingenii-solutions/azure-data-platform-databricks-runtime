@@ -196,6 +196,33 @@ class TestFileFolderPaths(TestCase):
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
 
+    def create_review_table_entry(self, expected_increment):
+        import_file_entry_mock = Mock()
+        with patch(
+                "ingenii_databricks.orchestration.import_file.ImportFileEntry",
+                import_file_entry_mock):
+            self.import_entry.create_review_table_entry()
+        import_file_entry_mock.assert_called_once_with(
+            self.spark_mock,
+            source_name=self.source_name,
+            table_name=self.table_name,
+            file_name=self.file_name,
+            processed_file_name=None,
+            increment=expected_increment,
+            extra_stages=["archived", "staged"]
+        )
+
+    def test_create_review_table_entry(self):
+        self.create_review_table_entry(1)
+
+        self.import_entry.increment = 1
+        self.create_review_table_entry(2)
+
+        self.import_entry.increment = 3
+        self.create_review_table_entry(4)
+
+        self.import_entry.increment = 0
+
     ########
     # Archive File
     ########
