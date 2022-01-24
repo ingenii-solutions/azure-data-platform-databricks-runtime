@@ -5,14 +5,11 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-sys.modules["delta.tables"] = Mock()
-sys.modules["pyspark.sql.functions"] = functions_mock = Mock(
-    hash=Mock(return_value="mock hash")
-)
-
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
 from ingenii_databricks.orchestration.import_file import \
     MissingEntryException, MissingFileException  # noqa: E402
+
+from unit_tests.test__mocks import functions_mock
 
 file_str = "ingenii_databricks.orchestration"
 class_str = f"{file_str}.ImportFileEntry"

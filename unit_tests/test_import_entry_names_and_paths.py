@@ -1,11 +1,5 @@
-import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch
-
-sys.modules["delta.tables"] = delta_tables_mock = Mock()
-# sys.modules["pyspark.sql.functions"] = Mock(
-#     hash=Mock(return_value="mock hash")
-# )
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
 from ingenii_databricks.orchestration.base import OrchestrationTable  # noqa: E402
