@@ -26,16 +26,14 @@ class OrchestrationTable:
 
     def __init__(self, spark):
         self.spark = spark
-
-    def get_orch_table_folder(self):
-        return f"/mnt/{self.database}/{self.orch_table}"
+        self.table_folder = f"/mnt/{self.database}/{self.orch_table}"
 
     def create_orch_table(self):
         create_database(self.spark, self.database)
         return create_table(
             self.spark, self.database, self.orch_table,
             self.schema_as_dict(self.table_schema),
-            self.get_orch_table_folder())
+            self.table_folder)
 
     def get_orch_table(self) -> DeltaTable:
         """
@@ -46,8 +44,8 @@ class OrchestrationTable:
         DeltaTable
             A representation of the table that can be queried
         """
-        if is_table(self.spark, self.get_orch_table_folder()):
-            return get_table(self.spark, self.get_orch_table_folder())
+        if is_table(self.spark, self.table_folder):
+            return get_table(self.spark, self.table_folder)
         else:
             return self.create_orch_table()
 
