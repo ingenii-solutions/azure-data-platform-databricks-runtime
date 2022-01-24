@@ -34,13 +34,14 @@ class TestFileFolderPaths(TestCase):
         )
     )
     functions_mock = Mock()
+    spark_mock = Mock()
 
     with \
             patch(f"{class_str}.get_import_table_df", existing_entry_mock), \
             patch(f"{class_str}.create_import_entry", Mock()), \
             patch(f"{class_str}.get_import_entry", Mock()):
         import_entry = ImportFileEntry(
-            spark=Mock(),
+            spark=spark_mock,
             source_name=source_name, table_name=table_name,
             file_name=file_name, increment=increment,
         )
@@ -97,92 +98,51 @@ class TestFileFolderPaths(TestCase):
             f"/mnt/raw/{self.source_name}/{self.table_name}/{self.file_name}"
         )
 
-    def test_get_file_table_name(self):
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_{self.row_hash}"
-        )
-
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_{self.row_hash}_1"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_{self.row_hash}_3"
-        )
-        self.import_entry.increment = 0
-
-        self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_m{self.row_hash}"
-        )
-
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_m{self.row_hash}_1"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_file_table_name(),
-            f"{self.table_name}_m{self.row_hash}_3"
-        )
-        self.import_entry.increment = 0
-        self.import_entry._details[ImportColumns.HASH] *= -1
-
-    def test_full_file_table_name(self):
-        self.assertEqual(
-            self.import_entry.get_full_file_table_name(),
-            f"{self.source_name}.{self.table_name}_{self.row_hash}"
-        )
-
-        self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_full_file_table_name(),
-            f"{self.source_name}.{self.table_name}_m{str(self.row_hash)}"
-        )
-        self.import_entry._details[ImportColumns.HASH] *= -1
-
     source_table_folder_path = f"/mnt/source/{source_name}/{table_name}"
 
-    def test_get_file_table_folder_path(self):
+    def file_table_name_and_path(self, path_suffix):
+        get_table_mock = Mock()
+        with patch(
+                "ingenii_databricks.orchestration.import_file.get_table",
+                get_table_mock):
+            self.import_entry.get_file_table()
+        get_table_mock.assert_called_once_with(
+            self.spark_mock,
+            self.source_table_folder_path + path_suffix
+        )
         self.assertEqual(
             self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}"
+            self.source_table_folder_path + path_suffix
+        )
+        self.assertEqual(
+            self.import_entry.get_file_table_name(),
+            self.table_name + path_suffix
+        )
+        self.assertEqual(
+            self.import_entry.get_full_file_table_name(),
+            f"{self.source_name}.{self.table_name}" + path_suffix
         )
 
+    def test_get_file_table(self):
+        self.file_table_name_and_path(f"_{self.row_hash}")
+
         self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}_1"
-        )
+        self.file_table_name_and_path(f"_{self.row_hash}_1")
+
         self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}_3"
-        )
+        self.file_table_name_and_path(f"_{self.row_hash}_3")
+
         self.import_entry.increment = 0
 
         self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}"
-        )
+        self.file_table_name_and_path(f"_m{self.row_hash}")
 
         self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}_1"
-        )
+        self.file_table_name_and_path(f"_m{self.row_hash}_1")
+
         self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_file_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}_3"
-        )
+        self.file_table_name_and_path(f"_m{self.row_hash}_3")
+
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
 
@@ -190,108 +150,49 @@ class TestFileFolderPaths(TestCase):
     # Review Table
     ########
 
-    def test_get_review_table_name(self):
+    def review_table_name_and_path(self, path_suffix):
+        get_table_mock = Mock()
+        with patch(
+                "ingenii_databricks.orchestration.import_file.get_table",
+                get_table_mock):
+            self.import_entry.get_review_table()
+        get_table_mock.assert_called_once_with(
+            self.spark_mock,
+            self.source_table_folder_path + path_suffix
+        )
+        self.assertEqual(
+            self.import_entry.get_review_table_folder_path(),
+            self.source_table_folder_path + path_suffix
+        )
         self.assertEqual(
             self.import_entry.get_review_table_name(),
-            f"{self.table_name}_{self.row_hash}_1"
+            self.table_name + path_suffix
         )
+        self.assertEqual(
+            self.import_entry.get_full_review_table_name(),
+            f"{self.source_name}.{self.table_name}" + path_suffix
+        )
+
+    def test_get_review_table(self):
+        self.review_table_name_and_path(f"_{self.row_hash}_1")
+
         self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_review_table_name(),
-            f"{self.table_name}_{self.row_hash}_2"
-        )
+        self.review_table_name_and_path(f"_{self.row_hash}_2")
+
         self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_review_table_name(),
-            f"{self.table_name}_{self.row_hash}_4"
-        )
+        self.review_table_name_and_path(f"_{self.row_hash}_4")
+
         self.import_entry.increment = 0
 
         self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_review_table_name(),
-            f"{self.table_name}_m{self.row_hash}_1"
-        )
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_review_table_name(),
-            f"{self.table_name}_m{self.row_hash}_2"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_review_table_name(),
-            f"{self.table_name}_m{self.row_hash}_4"
-        )
-        self.import_entry.increment = 0
-        self.import_entry._details[ImportColumns.HASH] *= -1
+        self.review_table_name_and_path(f"_m{self.row_hash}_1")
 
-    def test_get_full_review_table_name(self):
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_{self.row_hash}_1"
-        )
         self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_{self.row_hash}_2"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_{self.row_hash}_4"
-        )
-        self.import_entry.increment = 0
+        self.review_table_name_and_path(f"_m{self.row_hash}_2")
 
-        self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_m{self.row_hash}_1"
-        )
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_m{self.row_hash}_2"
-        )
         self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_full_review_table_name(),
-            f"{self.source_name}.{self.table_name}_m{self.row_hash}_4"
-        )
-        self.import_entry.increment = 0
-        self.import_entry._details[ImportColumns.HASH] *= -1
+        self.review_table_name_and_path(f"_m{self.row_hash}_4")
 
-    def test_get_review_table_folder_path(self):
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}_1"
-        )
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}_2"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_{self.row_hash}_4"
-        )
-        self.import_entry.increment = 0
-
-        self.import_entry._details[ImportColumns.HASH] *= -1
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}_1"
-        )
-        self.import_entry.increment = 1
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}_2"
-        )
-        self.import_entry.increment = 3
-        self.assertEqual(
-            self.import_entry.get_review_table_folder_path(),
-            f"{self.source_table_folder_path}_m{self.row_hash}_4"
-        )
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
 
@@ -334,5 +235,16 @@ class TestFileFolderPaths(TestCase):
     def test_get_source_table_folder_path(self):
         self.assertEqual(
             self.import_entry.get_source_table_folder_path(),
+            self.source_table_folder_path
+        )
+
+    def test_get_source_table(self):
+        get_table_mock = Mock()
+        with patch(
+                "ingenii_databricks.orchestration.import_file.get_table",
+                get_table_mock):
+            self.import_entry.get_source_table()
+        get_table_mock.assert_called_once_with(
+            self.spark_mock,
             self.source_table_folder_path
         )
