@@ -31,8 +31,8 @@ def get_folder_path(stage: str, source_name: str, table_name: str,
         The folder path that contains the table's files
     """
 
-    return "/" + "/".join([
-        "mnt", stage, source_name,
+    return "/".join([
+        "", "mnt", stage, source_name,
         f"{table_name}{hash_identifier if hash_identifier else ''}"
         ])
 
@@ -136,6 +136,25 @@ def handle_major_name(raw_name: str) -> str:
         The new name, cleaned of any problem containers
     """
     return handle_name(raw_name).replace("-", "_")
+
+
+def sql_table_name(database_name: str, table_name: str) -> str:
+    """
+    Given the defined names, return the full SQL-appropriate name
+
+    Parameters
+    ----------
+    database_name : str
+        The name of the database
+    table_name : str
+        The name of the table
+
+    Returns
+    -------
+    str
+        The full SQL-appropriate name
+    """
+    return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
 
 
 def schema_as_dict(schema_list: List) -> List[Dict]:
@@ -263,25 +282,6 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     """
     spark.sql(f"CREATE DATABASE IF NOT EXISTS "
               f"{handle_major_name(database_name)}")
-
-
-def sql_table_name(database_name: str, table_name: str) -> str:
-    """
-    Given the defined names, return the full SQL-appropriate name
-
-    Parameters
-    ----------
-    database_name : str
-        The name of the database
-    table_name : str
-        The name of the table
-
-    Returns
-    -------
-    str
-        The full SQL-appropriate name
-    """
-    return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,

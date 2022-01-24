@@ -3,51 +3,21 @@ from unittest.mock import Mock
 
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import delete_table, delete_table_data, \
-    is_table_metadata, schema_as_dict, schema_as_string, sql_table_name
-
-file_str = "ingenii_databricks.table_utils"
+    get_folder_path, handle_name, handle_major_name, is_table_metadata, \
+    schema_as_dict, schema_as_string, sql_table_name
 
 
 class TestTableUtils(TestCase):
 
-    table_names = {
-        "SoUrCe.TaBle": [
-            ("SoUrCe", "TaBle"),
-            ("So,UrCe", "Ta;Ble"),
-        ],
-        "source_1.table_2": [
-            ("source 1", "table 2"),
-            ("source-1", "table 2"),
-            ("source=1", "ta\nble\t2"),
-        ],
-        "source[1].table[2]": [
-            ("source{1]", "table[2}"),
-            ("source{1)", "table(2}"),
-        ],
-    }
-
-    def test_delete_table(self):
-        for res, opts in self.table_names.items():
-            for opt in opts:
-                spark_session = Mock()
-                delete_table(spark_session, opt[0], opt[1])
-                calls = spark_session.sql.call_args_list
-                self.assertEqual(len(calls), 2)
-                args, kwargs = calls[0]
-                self.assertEqual(args, (f"DELETE FROM {res}",))
-                self.assertDictEqual(kwargs, {})
-                args, kwargs = calls[1]
-                self.assertEqual(args, (f"DROP TABLE IF EXISTS {res}",))
-                self.assertDictEqual(kwargs, {})
-
-    def test_delete_table_data(self):
-        for res, opts in self.table_names.items():
-            for opt in opts:
-                spark_session = Mock()
-                delete_table_data(spark_session, opt[0], opt[1])
-                spark_session.sql.assert_called_once_with(
-                    f"DELETE FROM {res}"
-                )
+    def test_get_folder_path(self):
+        self.assertEqual(
+            get_folder_path("123", "456", "789"),
+            "/mnt/123/456/789"
+        )
+        self.assertEqual(
+            get_folder_path("123", "456", "789", hash_identifier="012"),
+            "/mnt/123/456/789012"
+        )
 
     def test_is_table_metadata(self):
         """ Check if the table exists based on Databricks metadata """
@@ -70,9 +40,29 @@ class TestTableUtils(TestCase):
         self.assertFalse(is_table_metadata(
             spark_session, database_name="source",  table_name="table"))
 
-    def test_sql_table_name(self):
+    table_names = {
+        "SoUrCe.TaBle": [
+            ("SoUrCe", "TaBle"),
+            ("So,UrCe", "Ta;Ble"),
+        ],
+        "source_1.table_2": [
+            ("source 1", "table 2"),
+            ("source-1", "table 2"),
+            ("source=1", "ta\nble\t2"),
+        ],
+        "source[1].table[2]": [
+            ("source{1]", "table[2}"),
+            ("source{1)", "table(2}"),
+        ],
+    }
+
+    def test_handle_name(self):
         for res, opts in self.table_names.items():
             for opt in opts:
+                self.assertEqual(
+                    res,
+                    f"{handle_major_name(opt[0])}.{handle_name(opt[1])}"
+                )
                 self.assertEqual(sql_table_name(opt[0], opt[1]), res)
 
     table_schema = ImportFileEntry.table_schema
@@ -109,6 +99,22 @@ class TestTableUtils(TestCase):
         "`rows_read` int, " \
         "`_date_row_inserted` timestamp NOT NULL, " \
         "`_date_row_updated` timestamp"
+    string_schema_null = \
+        "`hash` int, " \
+        "`source` string, " \
+        "`table` string, " \
+        "`file_name` string, " \
+        "`processed_file_name` string, " \
+        "`increment` int, " \
+        "`date_new` timestamp, " \
+        "`date_archived` timestamp, " \
+        "`date_staged` timestamp, " \
+        "`date_cleaned` timestamp, " \
+        "`date_inserted` timestamp, " \
+        "`date_completed` timestamp, " \
+        "`rows_read` int, " \
+        "`_date_row_inserted` timestamp, " \
+        "`_date_row_updated` timestamp"
 
     def test_schema_as_dict(self):
         self.assertListEqual(
@@ -119,3 +125,30 @@ class TestTableUtils(TestCase):
         self.assertEqual(
             schema_as_string(self.dictionary_schema), self.string_schema
         )
+        self.assertEqual(
+            schema_as_string(self.dictionary_schema, all_null=True),
+            self.string_schema_null
+        )
+
+    def test_delete_table(self):
+        for res, opts in self.table_names.items():
+            for opt in opts:
+                spark_session = Mock()
+                delete_table(spark_session, opt[0], opt[1])
+                calls = spark_session.sql.call_args_list
+                self.assertEqual(len(calls), 2)
+                args, kwargs = calls[0]
+                self.assertEqual(args, (f"DELETE FROM {res}",))
+                self.assertDictEqual(kwargs, {})
+                args, kwargs = calls[1]
+                self.assertEqual(args, (f"DROP TABLE IF EXISTS {res}",))
+                self.assertDictEqual(kwargs, {})
+
+    def test_delete_table_data(self):
+        for res, opts in self.table_names.items():
+            for opt in opts:
+                spark_session = Mock()
+                delete_table_data(spark_session, opt[0], opt[1])
+                spark_session.sql.assert_called_once_with(
+                    f"DELETE FROM {res}"
+                )
