@@ -3,7 +3,7 @@ from os import path, rename
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
-from typing import List, Union
+from typing import Dict, List, Union
 
 from ingenii_databricks.enums import ImportColumns as ic, MergeType
 
@@ -258,6 +258,30 @@ def sql_table_name(database_name: str, table_name: str) -> str:
         The full SQL-appropriate name
     """
     return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
+
+
+def schema_as_dict(schema_list: List) -> List[Dict]:
+    """
+    Given a pyspark-format schema, return this as distionaries of strings
+
+    Parameters
+    ----------
+    schema_list : List
+        The table schema in the pyspark format
+
+    Returns
+    -------
+    List[Dict]
+        The table schema as dictionaries
+    """
+    return [
+        {
+            "name": f.name,
+            "data_type": f.dataType.simpleString(),
+            "nullable": f.nullable
+        }
+        for f in schema_list
+    ]
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,

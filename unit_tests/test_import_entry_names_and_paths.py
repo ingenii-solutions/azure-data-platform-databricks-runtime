@@ -2,7 +2,6 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
-from ingenii_databricks.orchestration.base import OrchestrationTable  # noqa: E402
 from ingenii_databricks.enums import ImportColumns  # noqa: E402
 
 file_str = "ingenii_databricks.orchestration"
@@ -98,7 +97,7 @@ class TestFileFolderPaths(TestCase):
     def file_table_name_and_path(self, path_suffix):
         get_table_mock = Mock()
         with patch(
-                "ingenii_databricks.orchestration.import_file.get_table",
+                "ingenii_databricks.orchestration.get_table",
                 get_table_mock):
             self.import_entry.get_file_table()
         get_table_mock.assert_called_once_with(
@@ -148,7 +147,7 @@ class TestFileFolderPaths(TestCase):
     def review_table_name_and_path(self, path_suffix):
         get_table_mock = Mock()
         with patch(
-                "ingenii_databricks.orchestration.import_file.get_table",
+                "ingenii_databricks.orchestration.get_table",
                 get_table_mock):
             self.import_entry.get_review_table()
         get_table_mock.assert_called_once_with(
@@ -194,7 +193,7 @@ class TestFileFolderPaths(TestCase):
     def create_review_table_entry(self, expected_increment):
         import_file_entry_mock = Mock()
         with patch(
-                "ingenii_databricks.orchestration.import_file.ImportFileEntry",
+                "ingenii_databricks.orchestration.ImportFileEntry",
                 import_file_entry_mock):
             self.import_entry.create_review_table_entry()
         import_file_entry_mock.assert_called_once_with(
@@ -263,36 +262,10 @@ class TestFileFolderPaths(TestCase):
     def test_get_source_table(self):
         get_table_mock = Mock()
         with patch(
-                "ingenii_databricks.orchestration.import_file.get_table",
+                "ingenii_databricks.orchestration.get_table",
                 get_table_mock):
             self.import_entry.get_source_table()
         get_table_mock.assert_called_once_with(
             self.spark_mock,
             self.source_table_folder_path
         )
-
-
-class TestBaseOrchestration(TestCase):
-
-    def test_schema_as_dict(self):
-
-        table_schema = \
-            OrchestrationTable.schema_as_dict(ImportFileEntry.table_schema)
-        expected_schema = [
-            {"name": "hash", "data_type": "int", "nullable": False},
-            {"name": "source", "data_type": "string", "nullable": False},
-            {"name": "table", "data_type": "string", "nullable": False},
-            {"name": "file_name", "data_type": "string", "nullable": False},
-            {"name": "processed_file_name", "data_type": "string", "nullable": True},
-            {"name": "increment", "data_type": "int", "nullable": False},
-            {"name": "date_new", "data_type": "timestamp", "nullable": False},
-            {"name": "date_archived", "data_type": "timestamp", "nullable": True},
-            {"name": "date_staged", "data_type": "timestamp", "nullable": True},
-            {"name": "date_cleaned", "data_type": "timestamp", "nullable": True},
-            {"name": "date_inserted", "data_type": "timestamp", "nullable": True},
-            {"name": "date_completed", "data_type": "timestamp", "nullable": True},
-            {"name": "rows_read", "data_type": "int", "nullable": True},
-            {"name": "_date_row_inserted", "data_type": "timestamp", "nullable": False},
-            {"name": "_date_row_updated", "data_type": "timestamp", "nullable": True},
-        ]
-        self.assertListEqual(table_schema, expected_schema)

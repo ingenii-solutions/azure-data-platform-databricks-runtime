@@ -7,10 +7,10 @@ from pyspark.sql.types import StructField, StructType, IntegerType, \
     StringType, TimestampType
 from typing import List
 
-from .base import OrchestrationTable
 from ingenii_databricks.enums import ImportColumns, Stage
-from ingenii_databricks.table_utils import get_folder_path, get_table, \
-    handle_major_name, sql_table_name
+from ingenii_databricks.table_utils import create_database, create_table, \
+    get_folder_path, get_table, handle_major_name, is_table, schema_as_dict, \
+    sql_table_name
 
 
 class MissingEntryException(Exception):
@@ -21,11 +21,13 @@ class MissingFileException(Exception):
     ...
 
 
-class ImportFileEntry(OrchestrationTable):
+class ImportFileEntry:
     """
     Object to interact with the status of an individual file's status
     """
-    orch_table = "import_file"
+    database = "orchestration"
+    table_name = "import_file"
+    table_folder = f"/mnt/{database}/{table_name}"
     table_schema = [
         StructField(ImportColumns.HASH, IntegerType(), nullable=False),
         StructField(ImportColumns.SOURCE, StringType(), nullable=False),
@@ -130,8 +132,7 @@ class ImportFileEntry(OrchestrationTable):
         Exception
             If not enough information is passed to initialise
         """
-        super(ImportFileEntry, self).__init__(spark)
-
+        self.spark = spark
         self.increment = increment
 
         if row_hash is not None:
@@ -176,16 +177,24 @@ class ImportFileEntry(OrchestrationTable):
 
     # Orchestration table
 
-    def get_import_table(self):
+    def get_import_table(self) -> DeltaTable:
         """
-        Get the table
+        Get the table. If it doesn't exist yet, create it
+
 
         Returns
         -------
         DeltaTable
             A representation of the table that can be queried
         """
-        return self.get_orch_table()
+        if is_table(self.spark, self.table_folder):
+            return get_table(self.spark, self.table_folder)
+        else:
+            create_database(self.spark, self.database)
+            return create_table(
+                self.spark, self.database, self.table_name,
+                schema_as_dict(self.table_schema),
+                self.table_folder)
 
     def get_import_table_df(self):
         """
@@ -197,7 +206,7 @@ class ImportFileEntry(OrchestrationTable):
         DataFrame
             A representation of the table that can be queried
         """
-        return self.get_orch_table_df()
+        return self.get_import_table().toDF()
 
     def create_import_entry(self, source_name: str, table_name: str,
                             file_name: str, processed_file_name: str,

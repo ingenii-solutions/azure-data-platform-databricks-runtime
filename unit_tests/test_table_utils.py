@@ -1,8 +1,9 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
+from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import delete_table, delete_table_data, \
-    is_table_metadata, sql_table_name
+    is_table_metadata, schema_as_dict, sql_table_name
 
 file_str = "ingenii_databricks.table_utils"
 
@@ -73,3 +74,25 @@ class TestTableUtils(TestCase):
         for res, opts in self.table_names.items():
             for opt in opts:
                 self.assertEqual(sql_table_name(opt[0], opt[1]), res)
+
+    def test_schema_as_dict(self):
+
+        table_schema = schema_as_dict(ImportFileEntry.table_schema)
+        expected_schema = [
+            {"name": "hash", "data_type": "int", "nullable": False},
+            {"name": "source", "data_type": "string", "nullable": False},
+            {"name": "table", "data_type": "string", "nullable": False},
+            {"name": "file_name", "data_type": "string", "nullable": False},
+            {"name": "processed_file_name", "data_type": "string", "nullable": True},
+            {"name": "increment", "data_type": "int", "nullable": False},
+            {"name": "date_new", "data_type": "timestamp", "nullable": False},
+            {"name": "date_archived", "data_type": "timestamp", "nullable": True},
+            {"name": "date_staged", "data_type": "timestamp", "nullable": True},
+            {"name": "date_cleaned", "data_type": "timestamp", "nullable": True},
+            {"name": "date_inserted", "data_type": "timestamp", "nullable": True},
+            {"name": "date_completed", "data_type": "timestamp", "nullable": True},
+            {"name": "rows_read", "data_type": "int", "nullable": True},
+            {"name": "_date_row_inserted", "data_type": "timestamp", "nullable": False},
+            {"name": "_date_row_updated", "data_type": "timestamp", "nullable": True},
+        ]
+        self.assertListEqual(table_schema, expected_schema)

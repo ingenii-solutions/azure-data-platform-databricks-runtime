@@ -5,8 +5,7 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
-from ingenii_databricks.orchestration.import_file import \
+from ingenii_databricks.orchestration import ImportFileEntry, \
     MissingEntryException, MissingFileException  # noqa: E402
 
 from unit_tests.test__mocks import functions_mock
