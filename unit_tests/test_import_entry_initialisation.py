@@ -313,6 +313,7 @@ class TestInitialisation(TestCase):
         self.assertTupleEqual(wc_args, ("hash", functions_mock.hash.return_value))
         self.assertDictEqual(wc_kwargs, {})
 
+        print(functions_mock.hash.call_args_list)
         hash_args, hash_kwargs = functions_mock.hash.call_args_list[-1]
         self.assertTupleEqual(hash_args, ("source", "table", "file_name"))
         self.assertDictEqual(hash_kwargs, {})

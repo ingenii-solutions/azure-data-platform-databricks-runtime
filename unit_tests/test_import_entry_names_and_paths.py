@@ -3,11 +3,12 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 sys.modules["delta.tables"] = delta_tables_mock = Mock()
-sys.modules["pyspark.sql.functions"] = functions_mock = Mock(
-    hash=Mock(return_value="mock hash")
-)
+# sys.modules["pyspark.sql.functions"] = Mock(
+#     hash=Mock(return_value="mock hash")
+# )
 
 from ingenii_databricks.orchestration import ImportFileEntry  # noqa: E402
+from ingenii_databricks.orchestration.base import OrchestrationTable  # noqa: E402
 from ingenii_databricks.enums import ImportColumns  # noqa: E402
 
 file_str = "ingenii_databricks.orchestration"
@@ -275,3 +276,29 @@ class TestFileFolderPaths(TestCase):
             self.spark_mock,
             self.source_table_folder_path
         )
+
+
+class TestBaseOrchestration(TestCase):
+
+    def test_schema_as_dict(self):
+
+        table_schema = \
+            OrchestrationTable.schema_as_dict(ImportFileEntry.table_schema)
+        expected_schema = [
+            {"name": "hash", "data_type": "int", "nullable": False},
+            {"name": "source", "data_type": "string", "nullable": False},
+            {"name": "table", "data_type": "string", "nullable": False},
+            {"name": "file_name", "data_type": "string", "nullable": False},
+            {"name": "processed_file_name", "data_type": "string", "nullable": True},
+            {"name": "increment", "data_type": "int", "nullable": False},
+            {"name": "date_new", "data_type": "timestamp", "nullable": False},
+            {"name": "date_archived", "data_type": "timestamp", "nullable": True},
+            {"name": "date_staged", "data_type": "timestamp", "nullable": True},
+            {"name": "date_cleaned", "data_type": "timestamp", "nullable": True},
+            {"name": "date_inserted", "data_type": "timestamp", "nullable": True},
+            {"name": "date_completed", "data_type": "timestamp", "nullable": True},
+            {"name": "rows_read", "data_type": "int", "nullable": True},
+            {"name": "_date_row_inserted", "data_type": "timestamp", "nullable": False},
+            {"name": "_date_row_updated", "data_type": "timestamp", "nullable": True},
+        ]
+        self.assertListEqual(table_schema, expected_schema)
