@@ -23,7 +23,7 @@ class TestFileFolderPaths(TestCase):
     processed_file_name = "processed_file_name"
     increment = 0
 
-    existing_import_entry_mock = Mock(
+    existing_entry_mock = Mock(
         return_value=Mock(
             where=Mock(
                 return_value=Mock(
@@ -36,7 +36,7 @@ class TestFileFolderPaths(TestCase):
     functions_mock = Mock()
 
     with \
-            patch(f"{class_str}.get_import_table_df", existing_import_entry_mock), \
+            patch(f"{class_str}.get_import_table_df", existing_entry_mock), \
             patch(f"{class_str}.create_import_entry", Mock()), \
             patch(f"{class_str}.get_import_entry", Mock()):
         import_entry = ImportFileEntry(
@@ -48,9 +48,14 @@ class TestFileFolderPaths(TestCase):
         ImportColumns.SOURCE: source_name,
         ImportColumns.TABLE: table_name,
         ImportColumns.FILE_NAME: file_name,
+        ImportColumns.PROCESSED_FILE_NAME: None,
         ImportColumns.INCREMENT: increment,
         ImportColumns.HASH: row_hash,
     }
+
+    ########
+    # General
+    ########
 
     def test_full_table_name(self):
         self.assertEqual(
@@ -81,6 +86,10 @@ class TestFileFolderPaths(TestCase):
             "123456_3"
         )
         self.import_entry.increment = 0
+
+    ########
+    # Individual File Table
+    ########
 
     def test_get_file_path(self):
         self.assertEqual(
@@ -176,6 +185,10 @@ class TestFileFolderPaths(TestCase):
         )
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
+
+    ########
+    # Review Table
+    ########
 
     def test_get_review_table_name(self):
         self.assertEqual(
@@ -281,3 +294,45 @@ class TestFileFolderPaths(TestCase):
         )
         self.import_entry.increment = 0
         self.import_entry._details[ImportColumns.HASH] *= -1
+
+    ########
+    # Archive File
+    ########
+
+    archive_table_folder_path = f"/mnt/archive/{source_name}/{table_name}"
+
+    def test_get_archive_path(self):
+        self.assertEqual(
+            self.import_entry.get_archive_path(),
+            f"{self.archive_table_folder_path}/{self.file_name}"
+        )
+
+        self.import_entry._details[ImportColumns.PROCESSED_FILE_NAME] = \
+            self.processed_file_name
+        self.assertEqual(
+            self.import_entry.get_archive_path(),
+            f"{self.archive_table_folder_path}/{self.processed_file_name}"
+        )
+        self.import_entry._details[ImportColumns.PROCESSED_FILE_NAME] = None
+
+    ########
+    # Source Table
+    ########
+
+    def test_get_source_table_name(self):
+        self.assertEqual(
+            self.import_entry.get_source_table_name(),
+            self.table_name
+        )
+
+    def test_get_full_source_table_name(self):
+        self.assertEqual(
+            self.import_entry.get_full_source_table_name(),
+            f"{self.source_name}.{self.table_name}"
+        )
+
+    def test_get_source_table_folder_path(self):
+        self.assertEqual(
+            self.import_entry.get_source_table_folder_path(),
+            self.source_table_folder_path
+        )
