@@ -3,7 +3,7 @@ from os import path, rename
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import col, hash
 from pyspark.sql.session import SparkSession
-from typing import List, Union
+from typing import Dict, List, Union
 
 from ingenii_databricks.enums import ImportColumns as ic, MergeType
 
@@ -31,8 +31,8 @@ def get_folder_path(stage: str, source_name: str, table_name: str,
         The folder path that contains the table's files
     """
 
-    return "/" + "/".join([
-        "mnt", stage, source_name,
+    return "/".join([
+        "", "mnt", stage, source_name,
         f"{table_name}{hash_identifier if hash_identifier else ''}"
         ])
 
@@ -138,6 +138,49 @@ def handle_major_name(raw_name: str) -> str:
     return handle_name(raw_name).replace("-", "_")
 
 
+def sql_table_name(database_name: str, table_name: str) -> str:
+    """
+    Given the defined names, return the full SQL-appropriate name
+
+    Parameters
+    ----------
+    database_name : str
+        The name of the database
+    table_name : str
+        The name of the table
+
+    Returns
+    -------
+    str
+        The full SQL-appropriate name
+    """
+    return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
+
+
+def schema_as_dict(schema_list: List) -> List[Dict]:
+    """
+    Given a pyspark-format schema, return this as distionaries of strings
+
+    Parameters
+    ----------
+    schema_list : List
+        The table schema in the pyspark format
+
+    Returns
+    -------
+    List[Dict]
+        The table schema as dictionaries
+    """
+    return [
+        {
+            "name": f.name,
+            "data_type": f.dataType.simpleString(),
+            "nullable": f.nullable
+        }
+        for f in schema_list
+    ]
+
+
 def schema_as_string(schema_list: list, all_null=False) -> str:
     """
     Takes a dictionary object of a schema, and turns it into string form to be
@@ -239,25 +282,6 @@ def create_database(spark: SparkSession, database_name: str) -> None:
     """
     spark.sql(f"CREATE DATABASE IF NOT EXISTS "
               f"{handle_major_name(database_name)}")
-
-
-def sql_table_name(database_name: str, table_name: str) -> str:
-    """
-    Given the defined names, return the full SQL-appropriate name
-
-    Parameters
-    ----------
-    database_name : str
-        The name of the database
-    table_name : str
-        The name of the table
-
-    Returns
-    -------
-    str
-        The full SQL-appropriate name
-    """
-    return f"{handle_major_name(database_name)}.{handle_name(table_name)}"
 
 
 def create_table(spark: SparkSession, database_name: str, table_name: str,
@@ -379,11 +403,14 @@ def _difference_condition_string(all_columns: List[str],
     """
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
+    handled_merge_columns = [handle_name(column) for column in merge_columns]
+
     return " OR ".join([
         f"deltatable.`{handle_name(column)}` <> "
         f"dataframe.`{handle_name(column)}`"
         for column in all_columns
-        if column not in merge_columns and not column.startswith("_")
+        if handle_name(column) not in handled_merge_columns
+        and not column.startswith("_")
     ])
 
 
@@ -405,10 +432,15 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
         The action to take when merging e.g. updating, or only inserting
     """
 
-    if not MergeType.check_type(merge_type):
+    allowed_types = (
+        MergeType.MERGE_DATE_ROWS,
+        MergeType.MERGE_UPDATE,
+        MergeType.MERGE_INSERT
+    )
+    if merge_type not in allowed_types:
         raise Exception(
             f"{merge_type} not a recognised merge type! "
-            f"Possible types: {MergeType.all_types()}")
+            f"Possible types: {allowed_types}")
 
     # https://github.com/delta-io/delta/blob/master/python/delta/tables.py
     updated_table = \
@@ -418,7 +450,15 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
 
     if merge_type == MergeType.MERGE_DATE_ROWS:
         # Merge, but be careful with _date_row_inserted and _date_row_updated
+        # Used in orchestration.import_file
         updated_table = updated_table \
+            .whenNotMatchedInsert(
+                values={
+                    col_name: f"dataframe.{col_name}"
+                    for col_name in dataframe.columns
+                    if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
+                }
+            ) \
             .whenMatchedUpdate(
                 condition=_difference_condition_string(
                     dataframe.columns, merge_columns),
@@ -427,12 +467,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                     for col_name in dataframe.columns
                     if col_name != ic.DATE_ROW_INSERTED  # Remains the same
                 }
-            ) \
-            .whenNotMatchedInsert(values={
-                col_name: f"dataframe.{col_name}"
-                for col_name in dataframe.columns
-                if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
-            })
+            )
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
         updated_table = updated_table \
@@ -470,8 +505,8 @@ def delete_table_entries(deltatable: DeltaTable, dataframe: DataFrame,
 
     deltatable.alias("deltatable").merge(
         source=dataframe.alias("dataframe"),
-        condition=_match_condition_string(merge_columns)) \
-        .whenMatchedDelete()
+        condition=_match_condition_string(merge_columns)
+    ).whenMatchedDelete()
 
 
 def delete_table_data(spark: SparkSession, database_name: str, table_name: str

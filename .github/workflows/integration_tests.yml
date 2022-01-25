@@ -63,7 +63,7 @@ jobs:
         run: |
           pip install -r requirements-test.txt
       # ----------------------------------------
-      - name: Sync Databricks notebookes
+      - name: Sync Databricks notebooks
         run: |
           databricks configure --aad-token --host https://${DATABRICKS_HOST}
           databricks workspace mkdirs '/Shared/Testing'
