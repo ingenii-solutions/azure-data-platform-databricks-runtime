@@ -66,7 +66,7 @@ jobs:
       - name: Sync Databricks notebooks
         run: |
           databricks configure --aad-token --host https://${DATABRICKS_HOST}
-          # databricks workspace mkdirs '/Shared/Testing'
+          databricks workspace mkdirs '/Shared/Testing'
           ls integration_tests/notebooks | awk -F '.' '{ print $1 }' | xargs -I {} databricks workspace import -l PYTHON integration_tests/notebooks/{}.py '/Shared/Testing/{}' --overwrite
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
