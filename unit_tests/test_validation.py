@@ -40,7 +40,12 @@ class TestParameterValidation(TestCase):
         )
         self.assertRaises(
             ParameterException, check_parameters,
-            source=source, table_name=None, file_path="",
+            source=None, table_name=table_name, file_path=None,
+            file_name=file_name, increment=increment
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=None, table_name=None, file_path="",
             file_name=file_name, increment=increment
         )
         self.assertRaises(
