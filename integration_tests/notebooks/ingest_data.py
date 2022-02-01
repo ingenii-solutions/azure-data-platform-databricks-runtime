@@ -31,18 +31,3 @@ if import_entry.is_stage(Stage.NEW):
     import_entry.update_status(Stage.ARCHIVED)
 
 n_rows = create_file_table(spark, import_entry, table0_schema)
-
-# COMMAND ----------
-# Catch when there are extra columns in the file
-
-table_name = "table2"
-table_schema = source_details["tables"][table_name]
-file_name = "file2.csv"
-
-exception = False
-try:
-    read_file(spark, f"/mnt/raw/{source}/{table_name}/{file_name}", table_schema)
-except SchemaException:
-    exception = True
-
-assert exception

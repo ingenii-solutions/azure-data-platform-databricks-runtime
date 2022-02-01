@@ -261,12 +261,13 @@ def read_file(spark: SparkSession, file_path: str, table_schema: dict
             }
 
             # Check there are no extra columns
-            missing_columns = [h for h in headers if h not in schema_map]
-            if missing_columns:
+            extra_columns = [h for h in headers if h not in schema_map]
+            if extra_columns:
                 raise SchemaException(
-                    f"Extra columns in file not in schema: {missing_columns}"
+                    f"Extra columns in file not in schema: {extra_columns}"
                 )
 
+            # Correctly ordered, potentially subset of columns
             schema_columns = [schema_map[h] for h in headers]
 
     return read_func(
