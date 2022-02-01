@@ -4,7 +4,7 @@ sources:
   - name: test_data
     schema: test_data
     tables:
-      - name: table1
+      - name: table2
         external:
           using: "delta"
         join:
@@ -12,7 +12,7 @@ sources:
           column: "date"
         file_details:
           sep: ","
-          header: false
+          header: true
           dateFormat: yyyy-MM-dd
           timestampFormat: yyyy-MM-dd HH:mm:ss
         columns:

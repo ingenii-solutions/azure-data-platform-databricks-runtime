@@ -12,7 +12,7 @@ sources:
           column: "date"
         file_details:
           sep: ","
-          header: false
+          header: true
           dateFormat: yyyy-MM-dd
           timestampFormat: yyyy-MM-dd HH:mm:ss
         columns:
