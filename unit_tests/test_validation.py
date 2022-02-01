@@ -5,11 +5,52 @@ from unittest.mock import Mock
 
 from ingenii_data_engineering.dbt_schema import get_source
 
-from ingenii_databricks.validation import check_source_schema, \
-    compare_schema_and_table, SchemaException
+from ingenii_databricks.validation import check_parameters, \
+    check_source_schema, compare_schema_and_table, ParameterException, \
+    SchemaException
 
 
-class TestValidation(TestCase):
+class TestParameterValidation(TestCase):
+
+    def test_missing_parameters(self):
+        source = "source"
+        table_name = "table_name"
+        file_path = "file_path"
+        file_name = "file_name"
+        increment = "increment"
+
+        check_parameters(
+            source=source, table_name=table_name, file_path=None,
+            file_name=file_name, increment=increment
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=source, table_name=table_name, file_path=None,
+            file_name=file_name, increment=None
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=source, table_name=table_name, file_path=None,
+            file_name=None, increment=increment
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=source, table_name=None, file_path=None,
+            file_name=file_name, increment=increment
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=source, table_name=None, file_path="",
+            file_name=file_name, increment=increment
+        )
+        self.assertRaises(
+            ParameterException, check_parameters,
+            source=source, table_name=None, file_path=file_path,
+            file_name=file_name, increment=increment
+        )
+
+
+class TestSchemaValidation(TestCase):
 
     source = "test_data"
     table = "table0"
