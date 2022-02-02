@@ -8,6 +8,10 @@ from typing import Dict, List, Union
 from ingenii_databricks.enums import ImportColumns as ic, MergeType
 
 
+class SchemaException(Exception):
+    ...
+
+
 def get_folder_path(stage: str, source_name: str, table_name: str,
                     hash_identifier=None) -> str:
     """
@@ -255,6 +259,15 @@ def read_file(spark: SparkSession, file_path: str, table_schema: dict
                 field["name"].strip("`"): field
                 for field in table_schema["columns"]
             }
+
+            # Check there are no extra columns
+            extra_columns = [h for h in headers if h not in schema_map]
+            if extra_columns:
+                raise SchemaException(
+                    f"Extra columns in file not in schema: {extra_columns}"
+                )
+
+            # Correctly ordered, potentially subset of columns
             schema_columns = [schema_map[h] for h in headers]
 
     return read_func(

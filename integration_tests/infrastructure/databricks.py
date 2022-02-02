@@ -1,11 +1,10 @@
-from os import getenv
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
 from pulumi_azure_native import authorization, databricks as az_databricks
-from pulumi_databricks import databricks, Provider as DatabricksProvider, \
-    ProviderArgs as DatabricksProviderArgs
+from pulumi_databricks import databricks, Provider as DatabricksProvider
 
-from base import azure_client, location, overall_name, resource_group
+from base import azure_client, location, overall_name, resource_group, \
+    service_principal_name, testing_app
 from current_version import docker_image_url
 from datalake import datalake, container_names
 from networking import databricks_private_subnet, databricks_public_subnet, \
@@ -70,12 +69,7 @@ authorization.RoleAssignment(
 
 databricks_provider = DatabricksProvider(
     resource_name=workspace_name,
-    args=DatabricksProviderArgs(
-        azure_client_id=getenv("ARM_CLIENT_ID", azure_client.client_id),
-        azure_client_secret=getenv("ARM_CLIENT_SECRET"),
-        azure_tenant_id=getenv("ARM_TENANT_ID", azure_client.tenant_id),
-        azure_workspace_resource_id=workspace.id,
-    ),
+    azure_workspace_resource_id=workspace.id,
 )
 
 databricks.WorkspaceConf(
@@ -109,6 +103,7 @@ secret_scope = databricks.SecretScope(
     name=secret_scope_name,
     opts=ResourceOptions(provider=databricks_provider),
 )
+
 
 storage_mounts_dbw_password = databricks.Secret(
     resource_name=storage_mounts_sp_name,
@@ -187,4 +182,27 @@ testing_cluster = databricks.Cluster(
     },
     custom_tags={"ResourceClass": "SingleNode"},
     opts=ResourceOptions(provider=databricks_provider),
+)
+
+# Testing service principal
+service_principal = databricks.ServicePrincipal(
+    resource_name=f"{workspace_name}-service-principal-testing",
+    application_id=testing_app.application_id,
+    display_name=service_principal_name
+)
+
+databricks.Permissions(
+    resource_name=f"{workspace_name}-service-principal-testing-cluster-permission",
+    access_controls=[databricks.PermissionsAccessControlArgs(
+        permission_level="CAN_RESTART",
+        service_principal_name=service_principal.application_id
+    )],
+    cluster_id=testing_cluster.id
+)
+
+databricks.SecretAcl(
+    resource_name=f"{workspace_name}-secret-scope-{secret_scope_name}-acl",
+    permission="READ",
+    principal=service_principal.application_id,
+    scope=secret_scope_name
 )

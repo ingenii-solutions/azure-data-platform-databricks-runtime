@@ -83,6 +83,10 @@ PULUMI_ORGANIZATION	:= ingenii
 PULUMI_STACK := ${PULUMI_ORGANIZATION}/databricks-runtime-testing
 PULUMI_PARALLELISM	:= 2
 
+# Authenticate with user permissions + `az login`
+az-login:
+	az account set --subscription=${ARM_SUBSCRIPTION_ID}
+
 pulumi_init:
 	pulumi --cwd $(PULUMI_FOLDER) stack select $(PULUMI_STACK) --create --color always --non-interactive
 
@@ -108,8 +112,7 @@ notebook_sync:
 	./integration_tests/scripts/notebook_sync.sh
 
 run_integration_tests:
-	@az login --service-principal -t ${ARM_TENANT_ID} -u ${ARM_CLIENT_ID} -p ${ARM_CLIENT_SECRET} > /dev/null
-	@$(eval DATABRICKS_AAD_TOKEN=$(shell az account get-access-token  --subscription ${ARM_SUBSCRIPTION_ID} --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d | jq '.accessToken' --raw-output))
+	@$(eval DATABRICKS_AAD_TOKEN=$(shell az account get-access-token --subscription ${ARM_SUBSCRIPTION_ID} --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d | jq '.accessToken' --raw-output))
 
 	@DATABRICKS_AAD_TOKEN=${DATABRICKS_AAD_TOKEN} python ./integration_tests/scripts/submit_job.py
 

@@ -6,29 +6,43 @@ db = DatabricksAPI(
     host=getenv("DATABRICKS_HOST"), token=getenv("DATABRICKS_AAD_TOKEN")
 )
 
+cluster_id = getenv("DATABRICKS_CLUSTER_ID")
+
 clean_job_details = db.jobs.submit_run(
     run_name="Run tests",
     timeout_seconds=3600,
     tasks=[
-        {
-            "task_key": "Clean",
-            "existing_cluster_id": getenv("DATABRICKS_CLUSTER_ID"),
-            "notebook_task": {
-                "notebook_path": "/Shared/Testing/cleanup",
+            {
+                "task_key": "Clean",
+                "existing_cluster_id": cluster_id,
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/cleanup",
+                }
+            },
+            {
+                "task_key": "ExtraColumns",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Clean"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/file_has_extra_columns",
+                }
+            },
+            {
+                "task_key": "HappyPath",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "ExtraColumns"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_happy_path",
+                }
+            },
+            {
+                "task_key": "IngestTestFailures",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "HappyPath"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_test_failures",
+                }
             }
-        },
-        {
-            "task_key": "Test",
-            "existing_cluster_id": getenv("DATABRICKS_CLUSTER_ID"),
-            "depends_on": [
-                {
-                    "task_key": "Clean"
-                },
-            ],
-            "notebook_task": {
-                "notebook_path": "/Shared/Testing/ingest_data",
-            }
-        }
     ],
     version="2.1",
 )
@@ -73,5 +87,16 @@ while task_running:
         sleep(60)
 
 if job_details["state"]["result_state"] != "SUCCESS":
-    print(job_details)
+    print("Result")
+
+    print({k: v for k, v in job_details.items() if k != "tasks"})
+
+    for task in job_details["tasks"]:
+        print(", ".join([
+            f"\tTask: {task['task_key']}",
+            f"depends on: {str([dep_task['task_key'] for dep_task in task.get('depends_on', [])])}",
+            f"state: {task['state']['result_state']}",
+            f"run_url: {task['run_page_url']}",
+        ]))
+
     raise Exception("Testing did not complete successfully!")
