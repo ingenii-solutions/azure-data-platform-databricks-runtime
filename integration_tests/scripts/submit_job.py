@@ -18,18 +18,31 @@ clean_job_details = db.jobs.submit_run(
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/cleanup",
                 }
-            }
-        ] + [
+            },
             {
-                "task_key": file,
+                "task_key": "Extra columns",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "Clean"}],
                 "notebook_task": {
-                    "notebook_path": f"/Shared/Testing/{file}",
+                    "notebook_path": "/Shared/Testing/file_has_extra_columns",
+                }
+            },
+            {
+                "task_key": "Happy Path",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Extra columns"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_happy_path",
+                }
+            },
+            {
+                "task_key": "Ingest test failures",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Happy Path"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }
             }
-            for file in ["file_has_extra_columns", "ingest_data_happy_path",
-                         "ingest_data_test_failures"]
     ],
     version="2.1",
 )
