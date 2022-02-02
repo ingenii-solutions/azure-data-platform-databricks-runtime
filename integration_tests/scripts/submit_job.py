@@ -74,5 +74,16 @@ while task_running:
         sleep(60)
 
 if job_details["state"]["result_state"] != "SUCCESS":
-    print(job_details)
+    print("Result")
+
+    print({k: v for k, v in job_details.items() if k != "tasks"})
+
+    for task in job_details["tasks"]:
+        print(", ".join([
+            f"\tTask: {task['task_key']}",
+            f"depends on: {str([dep_task['task_key'] for dep_task in task['depends_on']])}",
+            f"state: {task['state']['result_state']}",
+            f"run_url: {task['run_page_url']}",
+        ]))
+
     raise Exception("Testing did not complete successfully!")
