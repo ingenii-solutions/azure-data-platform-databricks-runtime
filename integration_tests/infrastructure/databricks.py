@@ -2,8 +2,7 @@ from os import environ, getenv
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
 from pulumi_azure_native import authorization, databricks as az_databricks
-from pulumi_databricks import databricks, Provider as DatabricksProvider, \
-    ProviderArgs as DatabricksProviderArgs
+from pulumi_databricks import databricks, Provider as DatabricksProvider
 
 from base import azure_client, location, overall_name, resource_group
 from current_version import docker_image_url
@@ -70,12 +69,10 @@ authorization.RoleAssignment(
 
 databricks_provider = DatabricksProvider(
     resource_name=workspace_name,
-    args=DatabricksProviderArgs(
-        azure_client_id=getenv("ARM_CLIENT_ID", azure_client.client_id),
-        azure_client_secret=getenv("ARM_CLIENT_SECRET"),
-        azure_tenant_id=getenv("ARM_TENANT_ID", azure_client.tenant_id),
-        azure_workspace_resource_id=workspace.id,
-    ),
+    azure_client_id=getenv("ARM_CLIENT_ID", azure_client.client_id),
+    azure_client_secret=getenv("ARM_CLIENT_SECRET"),
+    azure_tenant_id=getenv("ARM_TENANT_ID", azure_client.tenant_id),
+    azure_workspace_resource_id=workspace.id,
 )
 
 databricks.WorkspaceConf(
