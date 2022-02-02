@@ -1,10 +1,10 @@
-from os import environ, getenv
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
 from pulumi_azure_native import authorization, databricks as az_databricks
 from pulumi_databricks import databricks, Provider as DatabricksProvider
 
-from base import azure_client, location, overall_name, resource_group
+from base import azure_client, location, overall_name, resource_group, \
+    service_principal_name, testing_app
 from current_version import docker_image_url
 from datalake import datalake, container_names
 from networking import databricks_private_subnet, databricks_public_subnet, \
@@ -182,4 +182,27 @@ testing_cluster = databricks.Cluster(
     },
     custom_tags={"ResourceClass": "SingleNode"},
     opts=ResourceOptions(provider=databricks_provider),
+)
+
+# Testing service principal
+service_principal = databricks.ServicePrincipal(
+    resource_name=f"{workspace_name}-service-principal-testing",
+    application_id=testing_app.application_id,
+    display_name=service_principal_name
+)
+
+databricks.Permissions(
+    resource_name=f"{workspace_name}-service-principal-testing-cluster-permission",
+    access_controls=[databricks.PermissionsAccessControlArgs(
+        permission_level="CAN_RESTART",
+        service_principal_name=service_principal.application_id
+    )],
+    cluster_id=testing_cluster.id
+)
+
+databricks.SecretAcl(
+    resource_name=f"{workspace_name}-secret-scope-{secret_scope_name}-acl",
+    permission="READ",
+    principal=service_principal.application_id,
+    scope=secret_scope_name
 )

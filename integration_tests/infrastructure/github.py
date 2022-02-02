@@ -1,9 +1,8 @@
 from pulumi_github import ActionsSecret
 
-from base import azure_client
+from base import azure_client, testing_app, testing_sp_password
 from databricks import workspace, testing_cluster
 from datalake import datalake
-from testing_service_principal import testing_app, testing_sp_password
 
 organization = "ingenii-solutions"
 repository_name = "azure-data-platform-databricks-runtime"
