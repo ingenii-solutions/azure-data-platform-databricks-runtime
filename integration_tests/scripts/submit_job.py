@@ -20,7 +20,7 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "Extra columns",
+                "task_key": "ExtraColumns",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "Clean"}],
                 "notebook_task": {
@@ -28,17 +28,17 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "Happy Path",
+                "task_key": "HappyPath",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "Extra columns"}],
+                "depends_on": [{"task_key": "ExtraColumns"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_happy_path",
                 }
             },
             {
-                "task_key": "Ingest test failures",
+                "task_key": "IngestTestFailures",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "Happy Path"}],
+                "depends_on": [{"task_key": "HappyPath"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }
