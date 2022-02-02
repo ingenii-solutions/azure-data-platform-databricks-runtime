@@ -5,10 +5,10 @@
 [![Contributing](https://img.shields.io/badge/howto%20-contribute-blue?style=flat)](https://github.com/ingenii-solutions/data-platform-databricks-runtime/blob/main/CONTRIBUTING.md)
 
 ## Details
-* Base image: [databricksruntime/standard:7.x](https://hub.docker.com/layers/databricksruntime/standard/7.x/images/sha256-0d51d36c7b927858757fdc828c6a9fd5375b98ffcb186324060d0b334f5149d3?context=explore)
+* Base image: [databricksruntime/standard:9.x](https://hub.docker.com/layers/databricksruntime/standard/9.x/images/sha256-cb414c7ab3c18e529b5e9cada0af996d8912ea7c3ea8087c68da0bb2768c03ab?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Current Version: 0.6.1
+* Current Version: 0.6.2
 
 ## Overview
 

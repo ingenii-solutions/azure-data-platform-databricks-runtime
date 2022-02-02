@@ -2,6 +2,7 @@
 
 | Version | Changes |
 | --- | --- |
+| 0.6.2 | **Engineering:** Boost base Docker image to 9.x |
 | 0.6.1 | **Engineering:** Integration tests and minor fixes |
 | 0.6.0 | **Engineering:** Models and snapshots created after source update |
 | 0.5.2 | **Engineering:** Add 'REPLACE' strategy |
