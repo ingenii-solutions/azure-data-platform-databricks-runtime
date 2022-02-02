@@ -81,7 +81,7 @@ if job_details["state"]["result_state"] != "SUCCESS":
     for task in job_details["tasks"]:
         print(", ".join([
             f"\tTask: {task['task_key']}",
-            f"depends on: {str([dep_task['task_key'] for dep_task in task['depends_on']])}",
+            f"depends on: {str([dep_task['task_key'] for dep_task in task.get('depends_on', [])])}",
             f"state: {task['state']['result_state']}",
             f"run_url: {task['run_page_url']}",
         ]))
