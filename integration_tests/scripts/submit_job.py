@@ -6,29 +6,30 @@ db = DatabricksAPI(
     host=getenv("DATABRICKS_HOST"), token=getenv("DATABRICKS_AAD_TOKEN")
 )
 
+cluster_id = getenv("DATABRICKS_CLUSTER_ID")
+
 clean_job_details = db.jobs.submit_run(
     run_name="Run tests",
     timeout_seconds=3600,
     tasks=[
-        {
-            "task_key": "Clean",
-            "existing_cluster_id": getenv("DATABRICKS_CLUSTER_ID"),
-            "notebook_task": {
-                "notebook_path": "/Shared/Testing/cleanup",
+            {
+                "task_key": "Clean",
+                "existing_cluster_id": cluster_id,
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/cleanup",
+                }
             }
-        },
-        {
-            "task_key": "Test",
-            "existing_cluster_id": getenv("DATABRICKS_CLUSTER_ID"),
-            "depends_on": [
-                {
-                    "task_key": "Clean"
-                },
-            ],
-            "notebook_task": {
-                "notebook_path": "/Shared/Testing/ingest_data",
+        ] + [
+            {
+                "task_key": file,
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Clean"}],
+                "notebook_task": {
+                    "notebook_path": f"/Shared/Testing/{file}",
+                }
             }
-        }
+            for file in ["file_has_extra_columns", "ingest_data_happy_path",
+                         "ingest_data_test_failures"]
     ],
     version="2.1",
 )
