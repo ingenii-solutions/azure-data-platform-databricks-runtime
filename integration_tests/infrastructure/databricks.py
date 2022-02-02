@@ -69,9 +69,6 @@ authorization.RoleAssignment(
 
 databricks_provider = DatabricksProvider(
     resource_name=workspace_name,
-    azure_client_id=getenv("ARM_CLIENT_ID", azure_client.client_id),
-    azure_client_secret=getenv("ARM_CLIENT_SECRET"),
-    azure_tenant_id=getenv("ARM_TENANT_ID", azure_client.tenant_id),
     azure_workspace_resource_id=workspace.id,
 )
 
@@ -185,26 +182,4 @@ testing_cluster = databricks.Cluster(
     },
     custom_tags={"ResourceClass": "SingleNode"},
     opts=ResourceOptions(provider=databricks_provider),
-)
-
-# Service principal
-service_principal_name = "Databricks Runtime Testing"
-service_principal = databricks.ServicePrincipal(
-    resource_name=f"{workspace_name}-service-principal-testing",
-    application_id=environ["TESTING_PRINCIPAL_CLIENT_ID"],
-    display_name=service_principal_name
-)
-databricks.Permissions(
-    resource_name=f"{workspace_name}-service-principal-testing-cluster-permission",
-    access_controls=[databricks.PermissionsAccessControlArgs(
-        permission_level="CAN_RESTART",
-        service_principal_name=service_principal.application_id
-    )],
-    cluster_id=testing_cluster.id
-)
-databricks.SecretAcl(
-    resource_name=f"{workspace_name}-secret-scope-{secret_scope_name}-acl",
-    permission="READ",
-    principal=service_principal.application_id,
-    scope=secret_scope_name
 )
