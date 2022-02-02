@@ -61,8 +61,6 @@ with \
 
     for row in generate_row():
 
-        writer_clean.writerow(row)
-
         if randint(1, 100) == 1:
             column = randint(1, 5)
 
@@ -78,5 +76,7 @@ with \
                 row["isGood"] = ""
 
             problems.writerow(row)
+        else:
+            writer_clean.writerow(row)
 
         writer.writerow(row)
