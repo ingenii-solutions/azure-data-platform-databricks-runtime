@@ -31,7 +31,7 @@ table_schema["join"]["type"] = MergeType.REPLACE
 raw_folder = f"/mnt/raw/{source}/{table_name}"
 
 dbutils.fs.mkdirs(raw_folder)
-dbutils.fs.cp(f"/mnt/raw/{source}/{source_table_name}/{file_name}",
+dbutils.fs.cp(f"/mnt/archive/{source}/{source_table_name}/{file_name}",
               f"{raw_folder}/{file_name}")
 
 

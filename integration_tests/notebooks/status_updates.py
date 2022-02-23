@@ -11,6 +11,12 @@ source = "tests"
 table_name = "status_updates"
 file_name = "example1.csv"
 
+raw_folder = f"/mnt/raw/{source}/{table_name}"
+
+dbutils.fs.mkdirs(raw_folder)
+dbutils.fs.cp(f"/mnt/raw/{source}/table0/file0.csv",
+              f"{raw_folder}/{file_name}")
+
 import_entry = ImportFileEntry(
     spark,
     source_name=source, table_name=table_name, file_name=file_name,
