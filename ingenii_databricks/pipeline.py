@@ -18,8 +18,8 @@ from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
 from ingenii_databricks.enums import MergeType, Stage
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
-    delete_table, delete_table_data, insert_dataframe_into_table, is_table, \
-    is_table_metadata, merge_dataframe_into_table, read_file
+    delete_table, insert_dataframe_into_table, is_table, is_table_metadata, \
+        merge_dataframe_into_table, overwrite_dataframe_into_table, read_file
 from ingenii_databricks.validation import check_parameters, \
     check_source_schema, compare_schema_and_table
 
@@ -367,9 +367,11 @@ def add_to_source_table(spark: SparkSession, import_entry: ImportFileEntry,
     else:
         # MergeType.INSERT or MergeType.REPLACE
         if join_type == MergeType.REPLACE:
-            delete_table_data(spark, import_entry.source, import_entry.table)
-        insert_dataframe_into_table(
-            import_entry.get_source_table_folder_path(), file_dataframe)
+            overwrite_dataframe_into_table(
+                import_entry.get_source_table_folder_path(), file_dataframe)
+        else:
+            insert_dataframe_into_table(
+                import_entry.get_source_table_folder_path(), file_dataframe)
 
 
 def remove_file_table(spark: SparkSession, dbutils: DBUtils,
