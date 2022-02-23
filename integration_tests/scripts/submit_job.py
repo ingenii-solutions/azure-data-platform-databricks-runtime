@@ -68,9 +68,17 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "IngestTestFailures",
+                "task_key": "HappyPathReplace",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "HappyPathInsert"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_replace",
+                }
+            },
+            {
+                "task_key": "IngestTestFailures",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "HappyPathReplace"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }
