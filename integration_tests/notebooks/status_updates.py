@@ -14,7 +14,7 @@ file_name = "example1.csv"
 raw_folder = f"/mnt/raw/{source}/{table_name}"
 
 dbutils.fs.mkdirs(raw_folder)
-dbutils.fs.cp(f"/mnt/archive/{source}/table0/file0.csv",
+dbutils.fs.cp("/mnt/archive/test_data/table0/file0.csv",
               f"{raw_folder}/{file_name}")
 
 import_entry = ImportFileEntry(
