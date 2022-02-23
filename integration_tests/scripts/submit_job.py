@@ -52,9 +52,25 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "IngestTestFailures",
+                "task_key": "HappyPathMergeUpdate",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "HappyPathMergeInsert"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_merge_update",
+                }
+            },
+            {
+                "task_key": "HappyPathInsert",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "HappyPathMergeUpdate"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_insert",
+                }
+            },
+            {
+                "task_key": "IngestTestFailures",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "HappyPathInsert"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }

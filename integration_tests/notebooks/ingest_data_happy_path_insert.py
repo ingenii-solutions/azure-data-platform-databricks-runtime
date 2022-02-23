@@ -24,8 +24,8 @@ file_name = "file0.csv"
 # COMMAND ----------
 # Copy data
 
-table_name = f"{source_table_name}_{MergeType.MERGE_INSERT}"
-table_schema["join"]["type"] = MergeType.MERGE_INSERT
+table_name = f"{source_table_name}_{MergeType.INSERT}"
+table_schema["join"]["type"] = MergeType.INSERT
 
 raw_folder = f"/mnt/raw/{source}/{table_name}"
 
@@ -94,12 +94,17 @@ for col in table_schema["columns"][1:]:  # Don't change the date
 
     changed_data.append({"column": col["name"], "day": day_to_change, "changes": changes})
 
+updated_row_count = spark.sql(select_all).count()
+
 # COMMAND ----------
 # Store unchanged data
 
 days_changed = [day_to_delete] + [data["day"] for data in changed_data]
 where_not_change = f"WHERE day(date) NOT IN (" + ", ".join(str(day) for day in days_changed) + ")"
-unchanged_data = spark.sql(f"{select_all} {where_not_change}").collect()
+unchanged_data_dict = {
+    row["date"]: row
+    for row in spark.sql(f"{select_all} {where_not_change}").collect()
+}
 
 # COMMAND ----------
 # Reingest file, check merging
@@ -116,22 +121,20 @@ with open(f"/dbfs/mnt/archive/{source}/{table_name}/{file_name}") as raw_file:
     for _ in raw_file.readlines():
         raw_count += 1
 
-assert raw_count == row_count + 1  # Add for header row
+# Check that a new copy of the data has been inserted
+assert raw_count + updated_row_count == row_count + 1  # Add for header row
 
 # COMMAND ----------
 # Assert data that is supposed to be unchanged is unchanged
-assert unchanged_data == spark.sql(f"{select_all} {where_not_change}").collect()
+for date_count in spark.sql(f"{select_all} {where_not_change}").groupBy("date").count().collect():
+    assert date_count["count"] == 2
+
+for unchanged in spark.sql(f"{select_all} {where_not_change}").collect():
+    for column in table_schema["columns"]:
+        assert unchanged[column["name"]] == unchanged_data_dict[unchanged["date"]][column["name"]]
 
 # COMMAND ----------
 # Explicitly check deleted lines restored
 
-row_count = spark.sql(f"{select_all} {where_delete}").count()
-assert deleted_count == row_count
-
-# COMMAND ----------
-# Insert, so changed data not updated
-
-for change in changed_data:
-    current_data = spark.sql(f"{select_all} WHERE day(date) = {change['day']}").collect()
-    for row in current_data:
-        assert row[change["column"]] == change["changes"][row["date"]]["changed"]
+for date_count in spark.sql(f"{select_all} {where_delete}").groupBy("date").count().collect():
+    assert date_count["count"] == 1

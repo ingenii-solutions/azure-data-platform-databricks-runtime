@@ -24,8 +24,8 @@ file_name = "file0.csv"
 # COMMAND ----------
 # Copy data
 
-table_name = f"{source_table_name}_{MergeType.MERGE_INSERT}"
-table_schema["join"]["type"] = MergeType.MERGE_INSERT
+table_name = f"{source_table_name}_{MergeType.MERGE_UPDATE}"
+table_schema["join"]["type"] = MergeType.MERGE_UPDATE
 
 raw_folder = f"/mnt/raw/{source}/{table_name}"
 
@@ -129,9 +129,9 @@ row_count = spark.sql(f"{select_all} {where_delete}").count()
 assert deleted_count == row_count
 
 # COMMAND ----------
-# Insert, so changed data not updated
+# Update, so changed data corrected
 
 for change in changed_data:
     current_data = spark.sql(f"{select_all} WHERE day(date) = {change['day']}").collect()
     for row in current_data:
-        assert row[change["column"]] == change["changes"][row["date"]]["changed"]
+        assert row[change["column"]] == change["changes"][row["date"]]["original"]
