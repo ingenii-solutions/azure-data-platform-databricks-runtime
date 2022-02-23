@@ -24,14 +24,35 @@ file_name = "file0.csv"
 import_entry = ImportFileEntry(spark, source_name=source,
                                table_name=table_name, file_name=file_name,
                                increment=0)
+expected_table_name = f"{table_name}_{import_entry.hash}"
 
+# COMMAND ----------
 # Create the individual file table
 archive_file(import_entry)
 create_file_table(spark, import_entry, table_schema)
 
+# Check file table created
+found = False
+for table_row in spark.sql(f"SHOW TABLES IN {source}").collect():
+    if table_row.tableName == expected_table_name:
+        found = True
+        break
+if not found:
+    raise Exception(f"File table {source}.{expected_table_name} not created!")
+
+# COMMAND ----------
 # Add to the source table
 add_to_source_table(spark, import_entry, table_schema)
 remove_file_table(spark, dbutils, import_entry)
+
+# Check file table removed
+found = False
+for table_row in spark.sql(f"SHOW TABLES IN {source}").collect():
+    if table_row.tableName == expected_table_name:
+        found = True
+        break
+if found:
+    raise Exception(f"File table {source}.{expected_table_name} not removed!")
 
 # COMMAND ----------
 # Check no NULL entries
