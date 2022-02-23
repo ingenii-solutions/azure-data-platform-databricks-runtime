@@ -44,41 +44,41 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "HappyPathMergeInsert",
+                "task_key": "MergeInsert",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "HappyPath"}],
                 "notebook_task": {
-                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_merge_insert",
+                    "notebook_path": "/Shared/Testing/ingest_data_merge_insert",
                 }
             },
             {
-                "task_key": "HappyPathMergeUpdate",
+                "task_key": "MergeUpdate",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "HappyPathMergeInsert"}],
+                "depends_on": [{"task_key": "MergeInsert"}],
                 "notebook_task": {
-                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_merge_update",
+                    "notebook_path": "/Shared/Testing/ingest_data_merge_update",
                 }
             },
             {
-                "task_key": "HappyPathInsert",
+                "task_key": "Insert",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "HappyPathMergeUpdate"}],
+                "depends_on": [{"task_key": "MergeUpdate"}],
                 "notebook_task": {
-                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_insert",
+                    "notebook_path": "/Shared/Testing/ingest_data_insert",
                 }
             },
             {
-                "task_key": "HappyPathReplace",
+                "task_key": "Replace",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "HappyPathInsert"}],
+                "depends_on": [{"task_key": "Insert"}],
                 "notebook_task": {
-                    "notebook_path": "/Shared/Testing/ingest_data_happy_path_replace",
+                    "notebook_path": "/Shared/Testing/ingest_data_replace",
                 }
             },
             {
                 "task_key": "IngestTestFailures",
                 "existing_cluster_id": cluster_id,
-                "depends_on": [{"task_key": "HappyPathReplace"}],
+                "depends_on": [{"task_key": "Replace"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }
