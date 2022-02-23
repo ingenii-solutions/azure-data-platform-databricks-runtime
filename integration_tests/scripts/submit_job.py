@@ -106,13 +106,13 @@ while task_running:
     print(f"Current state: {job_details['state']}")
     for task in job_details["tasks"]:
         if "depends_on" not in task:
-            print(f"\tTask: {task['task_key']}, state: {task['state']}")
+            print(f"\tTask: {task['task_key']}, state: {task['state'].get('result_state') or task['state']['life_cycle_state']}")
     for task in job_details["tasks"]:
         if "depends_on" in task:
             print(", ".join([
                 f"\tTask: {task['task_key']}",
                 f"depends on: {str([dep_task['task_key'] for dep_task in task['depends_on']])}",
-                f" state: {task['state']}"
+                f" state: {task['state'].get('result_state') or task['state']['life_cycle_state']}"
             ]))
 
     if "result_state" in job_details["state"]:
