@@ -135,7 +135,7 @@ if job_details["state"]["result_state"] != "SUCCESS":
         print(", ".join([
             f"\tTask: {task['task_key']}",
             f"depends on: {str([dep_task['task_key'] for dep_task in task.get('depends_on', [])])}",
-            f"state: {task['state']['result_state']}",
+            f"state: {task['state'].get('result_state') or task['state']}",
             f"run_url: {task['run_page_url']}",
         ]))
 
