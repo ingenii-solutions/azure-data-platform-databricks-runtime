@@ -51,15 +51,3 @@ with open(f"/dbfs/mnt/archive/{source}/{table_name}/{file_name}") as raw_file:
 row_count = spark.sql(f"SELECT * FROM {source}.{table_name}").count()
 
 assert raw_count == row_count + 1  # Add for header row
-
-# COMMAND ----------
-# Reingest file, check merging
-create_file_table(spark, import_entry, table_schema)
-
-# Add to the source table
-add_to_source_table(spark, import_entry, table_schema)
-remove_file_table(spark, dbutils, import_entry)
-
-row_count = spark.sql(f"SELECT * FROM {source}.{table_name}").count()
-
-assert raw_count == row_count + 1  # Add for header row
