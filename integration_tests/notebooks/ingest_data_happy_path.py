@@ -24,14 +24,33 @@ file_name = "file0.csv"
 import_entry = ImportFileEntry(spark, source_name=source,
                                table_name=table_name, file_name=file_name,
                                increment=0)
+expected_table_name = f"{table_name}_{import_entry.hash}"
 
+# COMMAND ----------
 # Create the individual file table
 archive_file(import_entry)
 create_file_table(spark, import_entry, table_schema)
 
+# Check file table created
+table_created = any(
+    table_row.tableName == expected_table_name
+    for table_row in spark.sql(f"SHOW TABLES IN {source}").collect()
+)
+if not table_created:
+    raise Exception(f"File table {source}.{expected_table_name} not created!")
+
+# COMMAND ----------
 # Add to the source table
 add_to_source_table(spark, import_entry, table_schema)
 remove_file_table(spark, dbutils, import_entry)
+
+# Check file table removed
+table_present = any(
+    table_row.tableName == expected_table_name
+    for table_row in spark.sql(f"SHOW TABLES IN {source}").collect()
+)
+if table_present:
+    raise Exception(f"File table {source}.{expected_table_name} not removed!")
 
 # COMMAND ----------
 # Check no NULL entries
@@ -47,18 +66,6 @@ raw_count = 0
 with open(f"/dbfs/mnt/archive/{source}/{table_name}/{file_name}") as raw_file:
     for _ in raw_file.readlines():
         raw_count += 1
-
-row_count = spark.sql(f"SELECT * FROM {source}.{table_name}").count()
-
-assert raw_count == row_count + 1  # Add for header row
-
-# COMMAND ----------
-# Reingest file, check merging
-create_file_table(spark, import_entry, table_schema)
-
-# Add to the source table
-add_to_source_table(spark, import_entry, table_schema)
-remove_file_table(spark, dbutils, import_entry)
 
 row_count = spark.sql(f"SELECT * FROM {source}.{table_name}").count()
 

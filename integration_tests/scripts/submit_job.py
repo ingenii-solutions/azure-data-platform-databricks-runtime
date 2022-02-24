@@ -28,17 +28,57 @@ clean_job_details = db.jobs.submit_run(
                 }
             },
             {
-                "task_key": "HappyPath",
+                "task_key": "StatusUpdates",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "ExtraColumns"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/status_updates",
+                }
+            },
+            {
+                "task_key": "HappyPath",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "StatusUpdates"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_happy_path",
                 }
             },
             {
-                "task_key": "IngestTestFailures",
+                "task_key": "MergeInsert",
                 "existing_cluster_id": cluster_id,
                 "depends_on": [{"task_key": "HappyPath"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_merge_insert",
+                }
+            },
+            {
+                "task_key": "MergeUpdate",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "MergeInsert"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_merge_update",
+                }
+            },
+            {
+                "task_key": "Insert",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "MergeUpdate"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_insert",
+                }
+            },
+            {
+                "task_key": "Replace",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Insert"}],
+                "notebook_task": {
+                    "notebook_path": "/Shared/Testing/ingest_data_replace",
+                }
+            },
+            {
+                "task_key": "IngestTestFailures",
+                "existing_cluster_id": cluster_id,
+                "depends_on": [{"task_key": "Replace"}],
                 "notebook_task": {
                     "notebook_path": "/Shared/Testing/ingest_data_test_failures",
                 }
@@ -66,13 +106,13 @@ while task_running:
     print(f"Current state: {job_details['state']}")
     for task in job_details["tasks"]:
         if "depends_on" not in task:
-            print(f"\tTask: {task['task_key']}, state: {task['state']}")
+            print(f"\tTask: {task['task_key']}, state: {task['state'].get('result_state') or task['state']['life_cycle_state']}")
     for task in job_details["tasks"]:
         if "depends_on" in task:
             print(", ".join([
                 f"\tTask: {task['task_key']}",
                 f"depends on: {str([dep_task['task_key'] for dep_task in task['depends_on']])}",
-                f" state: {task['state']}"
+                f" state: {task['state'].get('result_state') or task['state']['life_cycle_state']}"
             ]))
 
     if "result_state" in job_details["state"]:
@@ -95,7 +135,7 @@ if job_details["state"]["result_state"] != "SUCCESS":
         print(", ".join([
             f"\tTask: {task['task_key']}",
             f"depends on: {str([dep_task['task_key'] for dep_task in task.get('depends_on', [])])}",
-            f"state: {task['state']['result_state']}",
+            f"state: {task['state'].get('result_state') or task['state']}",
             f"run_url: {task['run_page_url']}",
         ]))
 

@@ -373,6 +373,21 @@ def insert_dataframe_into_table(folder_path: str, dataframe: DataFrame
     dataframe.write.format("delta").mode("append").save(folder_path)
 
 
+def overwrite_dataframe_into_table(folder_path: str, dataframe: DataFrame
+                                   ) -> None:
+    """
+    Given a DataFrame, overwrite a Delta table with it
+
+    Parameters
+    ----------
+    folder_path : str
+        Folder path of the Delta table
+    dataframe : DataFrame
+        DataFrame of data to insert
+    """
+    dataframe.write.format("delta").mode("overwrite").save(folder_path)
+
+
 def _match_condition_string(merge_columns: Union[str, List[str]]) -> str:
     """
     Given the columns to match on, generate a spark SQL string for matching
