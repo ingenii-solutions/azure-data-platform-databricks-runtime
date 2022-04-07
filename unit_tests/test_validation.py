@@ -128,6 +128,14 @@ class TestSchemaValidation(TestCase):
             "`_" + orig_col_name + "`"
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
+    def test_column_names_duplicate(self):
+        test_source = deepcopy(self.example_source)
+
+        columns = test_source["tables"][self.table]["columns"]
+        columns += [columns[3]]
+
+        self.assertRaises(SchemaException, check_source_schema, test_source)
+
     def test_compare_schema_and_table(self):
         spark_mock = Mock(
             sql=Mock(return_value=Mock(
