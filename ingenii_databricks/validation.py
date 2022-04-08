@@ -121,6 +121,7 @@ def check_source_schema(source_dict: dict) -> List[str]:
                         f"{column_names}"
                         )
 
+        all_suggested_names = []
         for column in table.get("columns", []):
             sub_errors = []
             has_backticks = \
@@ -164,12 +165,27 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 suggested_name = suggested_name.replace("_", "", 1)
                 wrapped_name = wrapped_name.replace("_", "", 1)
 
+            all_suggested_names.append(suggested_name)
+
             if sub_errors:
                 errors.extend([
                     se +
                     f" Suggested name '`{wrapped_name}`' or '{suggested_name}'"
                     for se in sub_errors
                 ])
+
+        # Check no duplicate column names
+        unique_column_names = set(all_suggested_names)
+        if len(unique_column_names) != len(all_suggested_names):
+            counts = {name: 0 for name in unique_column_names}
+            for name in all_suggested_names:
+                counts[name] += 1
+            errors.append(
+                "Duplicate columns in schema! " + ", ".join([
+                    f"{k} appears {v} times"
+                    for k, v in counts.items() if v > 1
+                ])
+            )
 
     if errors:
         raise SchemaException("\n".join(errors))
