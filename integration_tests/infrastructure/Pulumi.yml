@@ -2,3 +2,5 @@ name: databricks-runtime-testing
 runtime:
   name: python
 description: Ingenii Azure Data Platform - Databricks Runtime Testing
+backend:
+  url: azblob://internal
