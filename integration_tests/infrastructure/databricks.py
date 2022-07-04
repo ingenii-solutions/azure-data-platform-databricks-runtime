@@ -1,7 +1,8 @@
 from pulumi import ResourceOptions
 import pulumi_azuread as azuread
 from pulumi_azure_native import authorization, databricks as az_databricks
-from pulumi_databricks import databricks, Provider as DatabricksProvider
+import pulumi_databricks as databricks
+from pulumi_databricks import Provider as DatabricksProvider
 
 from base import azure_client, location, overall_name, resource_group, \
     service_principal_name, testing_app
