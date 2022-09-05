@@ -433,12 +433,13 @@ def _difference_condition_string(all_columns: List[str],
         merge_columns = merge_columns.split(",")
     handled_merge_columns = [handle_name(column) for column in merge_columns]
 
+    # Null safe comparison https://docs.microsoft.com/en-us/azure/databricks/sql/language-manual/sql-ref-null-semantics
     return " OR ".join([
-        f"deltatable.`{handle_name(column)}` <> "
+        f"NOT deltatable.`{handle_name(column)}` <=> "
         f"dataframe.`{handle_name(column)}`"
         for column in all_columns
-        if handle_name(column) not in handled_merge_columns
-        and not column.startswith("_")
+        if handle_name(column) not in handled_merge_columns  # Data columns, not merge columns
+        and not column.startswith("_")  # Private columns
     ])
 
 
