@@ -1,7 +1,8 @@
 name: Publish Docker image
 on:
-  release:
-    types: [published]
+  # release:
+  #   types: [published]
+  push:
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -9,19 +10,32 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
+      - name: Get Image Details
+        id: image_details
+        run: |
+          echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+          echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+          echo ::set-output name=VERSION::$(grep '* Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+          echo ::set-output name=BASE_PYTHON_REPOSITORY::$(grep '* Base Python Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+          echo ::set-output name=BASE_PYTHON_VERSION::$(grep '* Base Python Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.INGENII_DOCKER_HUB_USERNAME }}
           password: ${{ secrets.INGENII_DOCKER_HUB_PASSWORD }}
-      - name: Get Image Details
-        id: image_details
-        run: |
-          echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
-          echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=SOURCE_TAG::$(grep '* Current Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+      - name: Clean
+        id: clean
+        run: make clean
+      - name: Build package
+        id: build_package
+        run: make build-package
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
+          build-args: |
+            REGISTRY=${{ steps.image_details.outputs.REGISTRY }}
+            BASE_PYTHON_REPOSITORY=${{ steps.image_details.outputs.REPOSITORY }}
+            BASE_PYTHON_VERSION=${{ steps.image_details.outputs.VERSION }}
+            PACKAGE_VERSION=${{ steps.image_details.outputs.VERSION }}
           push: true
-          tags: ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest, ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.SOURCE_TAG }}
+          tags: ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest, ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.VERSION }}
