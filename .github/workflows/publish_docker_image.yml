@@ -43,7 +43,7 @@ jobs:
             REPOSITORY=${{ steps.image_details.outputs.BASE_PYTHON_REPOSITORY }}
             VERSION=${{ steps.image_details.outputs.BASE_PYTHON_VERSION }}
             PACKAGE_VERSION=${{ steps.image_details.outputs.VERSION }}
-          context: $GITHUB_WORKSPACE
+          context: ${{ env.GITHUB_WORKSPACE }}
           push: true
           tags: |
             ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest
