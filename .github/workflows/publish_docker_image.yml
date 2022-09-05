@@ -29,6 +29,10 @@ jobs:
       - name: Build package
         id: build_package
         run: make build-package
+      - name: Check
+        run: |
+          pwd
+          ls -la
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
