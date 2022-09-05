@@ -1,5 +1,5 @@
 .PHONY: build \
-clean-all clean-lint clean-package clean-setup clean-tests clean-qa \
+clean clean-lint clean-package clean-setup clean-tests clean-qa \
 lint lint-convert \
 test setup qa
 
@@ -30,7 +30,7 @@ build-package:
 
 # Lint and Unit tests
 
-clean-all:
+clean:
 	make clean-lint
 	make clean-package
 	make clean-tests
@@ -89,6 +89,9 @@ push-container-base-python:
 
 build-container:
 	docker build \
+		--build-arg REGISTRY=$(REGISTRY) \
+		--build-arg REPOSITORY=$(BASE_PYTHON_REPOSITORY) \
+		--build-arg VERSION=$(BASE_PYTHON_VERSION) \
 		--build-arg PACKAGE_VERSION=$(VERSION) \
 		-t $(REGISTRY)/$(REPOSITORY):$(VERSION) .
 
