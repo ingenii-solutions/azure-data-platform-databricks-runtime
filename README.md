@@ -8,7 +8,7 @@
 * Base image: [databricksruntime/standard:9.x](https://hub.docker.com/layers/databricksruntime/standard/9.x/images/sha256-cb414c7ab3c18e529b5e9cada0af996d8912ea7c3ea8087c68da0bb2768c03ab?context=explore)
 * Registry: ingeniisolutions
 * Repository: databricks-runtime
-* Version: 0.6.3
+* Version: 0.6.2
 
 ### Intermediate Images
 * Base OS Repository: databricks-runtime-base-os
