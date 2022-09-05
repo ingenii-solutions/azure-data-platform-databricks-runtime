@@ -33,6 +33,8 @@ jobs:
         run: |
           pwd
           ls -la
+          echo $GITHUB_ACTION_PATH
+          echo $GITHUB_WORKSPACE
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
@@ -42,4 +44,6 @@ jobs:
             VERSION=${{ steps.image_details.outputs.BASE_PYTHON_VERSION }}
             PACKAGE_VERSION=${{ steps.image_details.outputs.VERSION }}
           push: true
-          tags: ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest, ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.VERSION }}
+          tags: |
+            ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest
+            ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.VERSION }}
