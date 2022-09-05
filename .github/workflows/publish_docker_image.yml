@@ -34,8 +34,8 @@ jobs:
         with:
           build-args: |
             REGISTRY=${{ steps.image_details.outputs.REGISTRY }}
-            BASE_PYTHON_REPOSITORY=${{ steps.image_details.outputs.REPOSITORY }}
-            BASE_PYTHON_VERSION=${{ steps.image_details.outputs.VERSION }}
+            REPOSITORY=${{ steps.image_details.outputs.BASE_PYTHON_REPOSITORY }}
+            VERSION=${{ steps.image_details.outputs.BASE_PYTHON_VERSION }}
             PACKAGE_VERSION=${{ steps.image_details.outputs.VERSION }}
           push: true
           tags: ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest, ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.VERSION }}
