@@ -13,11 +13,11 @@ jobs:
       - name: Get Image Details
         id: image_details
         run: |
-          echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=VERSION::$(grep '* Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=BASE_PYTHON_REPOSITORY::$(grep '* Base Python Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=BASE_PYTHON_VERSION::$(grep '* Base Python Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
+          echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+          echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+          echo ::set-output name=VERSION::$(grep '* Version:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+          echo ::set-output name=BASE_PYTHON_REPOSITORY::$(grep '* Base Python Repository:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+          echo ::set-output name=BASE_PYTHON_VERSION::$(grep '* Base Python Version:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
         with:
