@@ -49,6 +49,7 @@ class TestTableUtils(TestCase):
             ("So,UrCe", "Ta;Ble"),
         ],
         "source_1.table_2": [
+            (" source 1\t", "\ntable 2 "),
             ("source 1", "table 2"),
             ("source-1", "table 2"),
             ("source=1", "ta\nble\t2"),
@@ -160,13 +161,13 @@ class TestTableUtils(TestCase):
         merge_columns_2 = "col1,col[2],col 4"
         self.assertEqual(
             _difference_condition_string(all_columns, merge_columns_1),
-            "deltatable.`col3` <> dataframe.`col3` OR "
-            "deltatable.`col_5` <> dataframe.`col_5`"
+            "NOT deltatable.`col3` <=> dataframe.`col3` OR "
+            "NOT deltatable.`col_5` <=> dataframe.`col_5`"
         )
         self.assertEqual(
             _difference_condition_string(all_columns, merge_columns_2),
-            "deltatable.`col3` <> dataframe.`col3` OR "
-            "deltatable.`col_5` <> dataframe.`col_5`"
+            "NOT deltatable.`col3` <=> dataframe.`col3` OR "
+            "NOT deltatable.`col_5` <=> dataframe.`col_5`"
         )
 
     def test_merge_dataframe_wrong_type(self):
@@ -191,9 +192,9 @@ class TestTableUtils(TestCase):
     match_string = \
         "deltatable.col1 = dataframe.col1 AND deltatable.col2 = dataframe.col2"
     difference_string = \
-        "deltatable.`col3` <> dataframe.`col3` OR " \
-        "deltatable.`col4` <> dataframe.`col4` OR " \
-        "deltatable.`col5` <> dataframe.`col5`"
+        "NOT deltatable.`col3` <=> dataframe.`col3` OR " \
+        "NOT deltatable.`col4` <=> dataframe.`col4` OR " \
+        "NOT deltatable.`col5` <=> dataframe.`col5`"
 
     def test_merge_dataframe_merge_date_rows(self):
         merge_table_mock = Mock()

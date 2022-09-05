@@ -119,10 +119,11 @@ def handle_name(raw_name: str) -> str:
     str
         An acceptable version of the name
     """
-    return raw_name.replace(" ", "_").replace(",", "").replace(";", "") \
-                   .replace("{", "[").replace("}", "]") \
-                   .replace("(", "[").replace(")", "]") \
-                   .replace("\n", "").replace("\t", "_").replace("=", "-")
+    return raw_name.strip() \
+        .replace(" ", "_").replace(",", "").replace(";", "") \
+        .replace("{", "[").replace("}", "]") \
+        .replace("(", "[").replace(")", "]") \
+        .replace("\n", "").replace("\t", "_").replace("=", "-")
 
 
 def handle_major_name(raw_name: str) -> str:
@@ -431,14 +432,16 @@ def _difference_condition_string(all_columns: List[str],
     """
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
+    handled_data_columns = []
     handled_merge_columns = [handle_name(column) for column in merge_columns]
 
+    # Null safe comparison https://docs.microsoft.com/en-us/azure/databricks/sql/language-manual/sql-ref-null-semantics
     return " OR ".join([
-        f"deltatable.`{handle_name(column)}` <> "
+        f"NOT deltatable.`{handle_name(column)}` <=> "
         f"dataframe.`{handle_name(column)}`"
         for column in all_columns
-        if handle_name(column) not in handled_merge_columns
-        and not column.startswith("_")
+        if handle_name(column) not in handled_merge_columns  # Data columns, not merge columns
+        and not column.startswith("_")  # Private columns
     ])
 
 
