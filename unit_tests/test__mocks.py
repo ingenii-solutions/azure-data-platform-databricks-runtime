@@ -1,7 +1,7 @@
 import sys
 from unittest.mock import Mock
 
-# This file is called 'test__mocks' becuase:
+# This file is called 'test__mocks' because:
 # 'test' so it is initialised by pytest
 # '__' to guarantee that it is initialised before other test files
 
