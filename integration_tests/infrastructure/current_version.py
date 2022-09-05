@@ -7,8 +7,8 @@ with open("../../README.md") as readme:
             registry = line.replace("* Registry: ", "").strip()
         if line.startswith("* Repository: "):
             repository = line.replace("* Repository: ", "").strip()
-        if line.startswith("* Current Version: "):
-            version = line.replace("* Current Version: ", "").strip()
+        if line.startswith("* Version: "):
+            version = line.replace("* Version: ", "").strip()
 
         if registry and repository and version:
             break

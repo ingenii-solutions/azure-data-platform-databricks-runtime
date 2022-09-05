@@ -4,7 +4,7 @@ from setuptools import setup
 with open("README.md", "r") as fh:
     readme = fh.read()
 
-regex = r"^\*\sCurrent\sVersion:\s(\d+.\d+.\d+)$"
+regex = r"^\*\sVersion:\s(\d+.\d+.\d+)$"
 match = re.search(regex, readme, re.MULTILINE)
 
 if match:
