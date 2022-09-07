@@ -1,0 +1,12 @@
+ARG REGISTRY
+ARG REPOSITORY
+ARG VERSION
+FROM ${REGISTRY}/${REPOSITORY}:${VERSION}
+
+WORKDIR /app
+
+COPY requirements.txt requirements.txt
+RUN /databricks/python3/bin/pip install -r requirements.txt
+
+# data build tool (DBT)
+RUN ln -s /databricks/conda/envs/dcs-minimal/bin/dbt /usr/local/bin/dbt

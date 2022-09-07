@@ -14,14 +14,33 @@ jobs:
         with:
           username: ${{ secrets.INGENII_DOCKER_HUB_USERNAME }}
           password: ${{ secrets.INGENII_DOCKER_HUB_PASSWORD }}
-      - name: Get Image Details
-        id: image_details
-        run: |
-          echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
-          echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-          echo ::set-output name=SOURCE_TAG::$(grep '* Current Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g')
-      - name: Push to Docker Hub
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest, ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.SOURCE_TAG }}
+      - name: Clean
+        id: clean
+        run: make clean
+      # - name: Build package
+      #   id: build_package
+      #   run: make build-package
+      # - name: Get Image Details
+      #   id: image_details
+      #   run: |
+      #     echo ::set-output name=REGISTRY::$(grep '* Registry:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+      #     echo ::set-output name=REPOSITORY::$(grep '* Repository:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+      #     echo ::set-output name=VERSION::$(grep '* Version:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+      #     echo ::set-output name=BASE_PYTHON_REPOSITORY::$(grep '* Base Python Repository:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+      #     echo ::set-output name=BASE_PYTHON_VERSION::$(grep '* Base Python Version:' README.md | awk -F ':' '{print $2}' | sed 's/ //g')
+      # - name: Push to Docker Hub
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     build-args: |
+      #       REGISTRY=${{ steps.image_details.outputs.REGISTRY }}
+      #       REPOSITORY=${{ steps.image_details.outputs.BASE_PYTHON_REPOSITORY }}
+      #       VERSION=${{ steps.image_details.outputs.BASE_PYTHON_VERSION }}
+      #       PACKAGE_VERSION=${{ steps.image_details.outputs.VERSION }}
+      #     context: ${{ env.GITHUB_ACTION_PATH }}
+      #     push: true
+      #     tags: |
+      #       ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:latest
+      #       ${{ steps.image_details.outputs.REGISTRY }}/${{ steps.image_details.outputs.REPOSITORY }}:${{ steps.image_details.outputs.VERSION }}
+      - name: Build and push image
+        id: build_and_push_image
+        run: make build-and-push

@@ -1,5 +1,5 @@
 .PHONY: build \
-clean-all clean-lint clean-package clean-setup clean-tests clean-qa \
+clean clean-lint clean-package clean-setup clean-tests clean-qa \
 lint lint-convert \
 test setup qa
 
@@ -7,7 +7,13 @@ test setup qa
 
 $(eval REGISTRY=$(shell grep '* Registry:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
 $(eval REPOSITORY=$(shell grep '* Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
-$(eval VERSION=$(shell grep '* Current Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
+$(eval VERSION=$(shell grep '* Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
+
+$(eval BASE_OS_REPOSITORY=$(shell grep '* Base OS Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
+$(eval BASE_OS_VERSION=$(shell grep '* Base OS Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
+
+$(eval BASE_PYTHON_REPOSITORY=$(shell grep '* Base Python Repository:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
+$(eval BASE_PYTHON_VERSION=$(shell grep '* Base Python Version:' README.md | awk -F ':' '{print $$2}' | sed 's/ //g'))
 
 PROJECT_ROOT := $(realpath .)
 
@@ -24,7 +30,7 @@ build-package:
 
 # Lint and Unit tests
 
-clean-all:
+clean:
 	make clean-lint
 	make clean-package
 	make clean-tests
@@ -62,10 +68,32 @@ qa:
 
 # Docker
 
+build-container-base-os:
+	docker build \
+		-f Dockerfile.os \
+		-t $(REGISTRY)/$(BASE_OS_REPOSITORY):$(BASE_OS_VERSION) .
+
+push-container-base-os:
+	docker push $(REGISTRY)/$(BASE_OS_REPOSITORY):$(BASE_OS_VERSION)
+
+build-container-base-python:
+	docker build \
+		-f Dockerfile.python \
+		--build-arg REGISTRY=$(REGISTRY) \
+		--build-arg REPOSITORY=$(BASE_OS_REPOSITORY) \
+		--build-arg VERSION=$(BASE_OS_VERSION) \
+		-t $(REGISTRY)/$(BASE_PYTHON_REPOSITORY):$(BASE_PYTHON_VERSION) .
+
+push-container-base-python:
+	docker push $(REGISTRY)/$(BASE_PYTHON_REPOSITORY):$(BASE_PYTHON_VERSION)
+
 build-container:
 	docker build \
-	--build-arg PACKAGE_VERSION=$(VERSION) \
-	-t $(REGISTRY)/$(REPOSITORY):$(VERSION) .
+		--build-arg REGISTRY=$(REGISTRY) \
+		--build-arg REPOSITORY=$(BASE_PYTHON_REPOSITORY) \
+		--build-arg VERSION=$(BASE_PYTHON_VERSION) \
+		--build-arg PACKAGE_VERSION=$(VERSION) \
+		-t $(REGISTRY)/$(REPOSITORY):$(VERSION) .
 
 push-container:
 	docker push $(REGISTRY)/$(REPOSITORY):$(VERSION)
