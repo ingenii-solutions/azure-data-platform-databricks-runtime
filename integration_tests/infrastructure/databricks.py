@@ -85,7 +85,7 @@ databricks.WorkspaceConf(
 system_cluster = databricks.Cluster(
     resource_name=f"{workspace_name}-system-cluster",
     cluster_name="system",
-    spark_version="9.1.x-scala2.12",
+    spark_version="10.4.x-scala2.12",
     node_type_id="Standard_F4s",
     is_pinned=True,
     autotermination_minutes=10,
@@ -156,7 +156,7 @@ dbt_token_as_scope_secret = databricks.Secret(
 testing_cluster = databricks.Cluster(
     resource_name=f"{workspace_name}-testing-cluster",
     cluster_name="testing",
-    spark_version="9.1.x-scala2.12",
+    spark_version="10.4.x-scala2.12",
     node_type_id="Standard_F4s",
     is_pinned=True,
     autotermination_minutes=10,
