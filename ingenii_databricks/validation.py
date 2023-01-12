@@ -85,16 +85,18 @@ def check_source_schema(source_dict: dict) -> List[str]:
         errors.append(
             f"Source {source_dict['name']}: "
             f"Schema named '{source_dict['schema']}' is not possible in "
-            f"Databricks. Suggested name: {handle_major_name(source_dict['schema'])}"
-            )
+            f"Databricks. Suggested name: "
+            f"{handle_major_name(source_dict['schema'])}"
+        )
 
     for _, table in source_dict.get("tables", {}).items():
         if table["name"] != handle_major_name(table["name"]):
             errors.append(
                 f"Source {source_dict['name']}: "
                 f"Table named '{table['name']}' is not possible in "
-                f"Databricks. Suggested name: {handle_major_name(table['name'])}"
-                )
+                f"Databricks. Suggested name: "
+                f"{handle_major_name(table['name'])}"
+            )
 
         # Check that the join type is understood
         if table.get("join", {}).get("type") is not None:
@@ -119,7 +121,7 @@ def check_source_schema(source_dict: dict) -> List[str]:
                         f"Trying to join on column {join_columns}, "
                         f"but {col} isn't one of the columns on the table: "
                         f"{column_names}"
-                        )
+                    )
 
         all_suggested_names = []
         for column in table.get("columns", []):
