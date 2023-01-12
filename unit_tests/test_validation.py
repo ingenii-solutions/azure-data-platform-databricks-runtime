@@ -136,7 +136,47 @@ class TestSchemaValidation(TestCase):
 
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
-    def test_compare_schema_and_table(self):
+    def test_compare_schema_and_table_matching(self):
+        table_schema = self.example_source["tables"][self.table]
+
+        spark_mock = Mock(
+            sql=Mock(return_value=Mock(
+                collect=Mock(return_value=[
+                    Mock(col_name=col["name"])
+                    for col in table_schema["columns"]
+                ])
+            ))
+        )
+        import_entry_mock = Mock(source=self.source, table=self.table)
+
+        compare_schema_and_table(
+            spark_mock, import_entry_mock, table_schema=table_schema)
+
+        spark_mock.sql.assert_called_once_with(
+            f"DESCRIBE TABLE {self.source}.{self.table}",
+        )
+
+    def test_compare_schema_and_table_not_case_sensitive(self):
+        table_schema = self.example_source["tables"][self.table]
+
+        spark_mock = Mock(
+            sql=Mock(return_value=Mock(
+                collect=Mock(return_value=[
+                    Mock(col_name=col["name"].title())
+                    for col in table_schema["columns"]
+                ])
+            ))
+        )
+        import_entry_mock = Mock(source=self.source, table=self.table)
+
+        compare_schema_and_table(
+            spark_mock, import_entry_mock, table_schema=table_schema)
+
+        spark_mock.sql.assert_called_once_with(
+            f"DESCRIBE TABLE {self.source}.{self.table}",
+        )
+
+    def test_compare_schema_and_table_missing_columns_in_table(self):
         spark_mock = Mock(
             sql=Mock(return_value=Mock(
                 collect=Mock(return_value=[
