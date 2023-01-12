@@ -177,11 +177,14 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 ])
 
         # Check no duplicate column names
-        unique_column_names = set(all_suggested_names)
+        # Databricks is not case sensitive, while schemas can be
+        unique_column_names = {name.lower() for name in all_suggested_names}
         if len(unique_column_names) != len(all_suggested_names):
             counts = {name: 0 for name in unique_column_names}
+
             for name in all_suggested_names:
-                counts[name] += 1
+                counts[name.lower()] += 1
+
             errors.append(
                 "Duplicate columns in schema! " + ", ".join([
                     f"{k} appears {v} times"
