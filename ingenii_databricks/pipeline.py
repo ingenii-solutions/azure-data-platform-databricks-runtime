@@ -86,9 +86,21 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
     # raw container
     file_data = read_file(spark, import_entry.get_archive_path(), table_schema)
 
+    # Check the merge columns are present
+    merge_columns = table_schema["join"]["column"].split(",")
+    missing_merge_columns = [
+        col
+        for col in merge_columns
+        if col not in file_data.columns
+    ]
+    if missing_merge_columns:
+        raise Exception(
+            f"Columns set as primary keys, but not present in raw file!: "
+            f"{','.join(missing_merge_columns)}"
+        )
+
     merge_dataframe_into_table(
-        file_table, file_data, table_schema["join"]["column"],
-        MergeType.MERGE_UPDATE)
+        file_table, file_data, merge_columns, MergeType.MERGE_UPDATE)
 
     return file_data.count()
 
@@ -342,10 +354,10 @@ def add_to_source_table(spark: SparkSession, import_entry: ImportFileEntry,
         Schema for the overall source table
     """
     if not (
-            is_table(spark, import_entry.get_source_table_folder_path()) and
-            is_table_metadata(spark, database_name=import_entry.source,
-                              table_name=import_entry.table)
-            ):
+        is_table(spark, import_entry.get_source_table_folder_path()) and
+        is_table_metadata(spark, database_name=import_entry.source,
+                          table_name=import_entry.table)
+    ):
         create_source_table(spark, import_entry, table_schema)
 
     file_dataframe = \
