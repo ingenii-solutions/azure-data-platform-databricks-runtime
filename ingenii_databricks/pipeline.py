@@ -1,27 +1,25 @@
 from datetime import datetime
 import logging
-from os import environ, mkdir, path
-from py4j.protocol import Py4JJavaError
+from os import mkdir, path
 from pyspark.dbutils import DBUtils
 from pyspark.sql.functions import lit
 from pyspark.sql.session import SparkSession
 from shutil import move
-from typing import List, Union
+from typing import List
 
 from ingenii_data_engineering.dbt_schema import add_individual_table, \
-    get_project_config, get_source, get_table_def, revert_yml
+    get_table_def, revert_yml
 from ingenii_data_engineering.pre_process import PreProcess
 
 from ingenii_databricks.dbt_utils import clear_dbt_log_file, \
     create_unique_id, find_node_order, get_errors_from_stdout, \
     get_nodes_and_dependents, MockDBTError, move_dbt_log_file, run_dbt_command
-from ingenii_databricks.enums import MergeType, Stage
+from ingenii_databricks.enums import MergeType
 from ingenii_databricks.orchestration import ImportFileEntry
 from ingenii_databricks.table_utils import create_database, create_table, \
-    delete_table, insert_dataframe_into_table, is_table, is_table_metadata, \
-        merge_dataframe_into_table, overwrite_dataframe_into_table, read_file
-from ingenii_databricks.validation import check_parameters, \
-    check_source_schema, compare_schema_and_table
+    delete_table, handle_name, insert_dataframe_into_table, is_table, \
+    is_table_metadata, merge_dataframe_into_table, \
+    overwrite_dataframe_into_table, read_file
 
 from pre_process.root import find_pre_process_function
 
@@ -89,9 +87,9 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
     # Check the merge columns are present
     merge_columns = table_schema["join"]["column"].split(",")
     missing_merge_columns = [
-        col
+        handle_name(col)
         for col in merge_columns
-        if col not in file_data.columns
+        if handle_name(col) not in file_data.columns
     ]
     if missing_merge_columns:
         raise Exception(

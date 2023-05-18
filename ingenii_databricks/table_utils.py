@@ -432,7 +432,6 @@ def _difference_condition_string(all_columns: List[str],
     """
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
-    handled_data_columns = []
     handled_merge_columns = [handle_name(column) for column in merge_columns]
 
     # Null safe comparison https://docs.microsoft.com/en-us/azure/databricks/sql/language-manual/sql-ref-null-semantics
