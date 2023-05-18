@@ -264,7 +264,7 @@ class TestTableUtils(TestCase):
         update_call = insert_call.return_value.whenMatchedUpdate
         update_call.assert_called_once_with(
             condition=self.difference_string,
-            values=self.update_values
+            set=self.update_values
         )
 
         update_call.return_value.execute.assert_called_once_with()

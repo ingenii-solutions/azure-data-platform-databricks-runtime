@@ -511,7 +511,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
             .whenMatchedUpdate(
                 condition=_difference_condition_string(
                     dataframe.columns, merge_columns),
-                values=update_columns
+                set=update_columns
             )
     elif merge_type == MergeType.MERGE_INSERT:
         # Only insert
