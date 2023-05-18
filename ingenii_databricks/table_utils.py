@@ -477,7 +477,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
         merge_table.alias("deltatable") \
                    .merge(dataframe.alias("dataframe"),
                           _match_condition_string(merge_columns))
-    update_columns = {
+    dataframe_columns_obj = {
         col_name: f"dataframe.{col_name}"
         for col_name in dataframe.columns
     }
@@ -489,7 +489,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
             .whenNotMatchedInsert(
                 values={
                     col_name: v
-                    for col_name, v in update_columns.items()
+                    for col_name, v in dataframe_columns_obj.items()
                     if col_name != ic.DATE_ROW_UPDATED
                     # _date_row_updated is null
                 }
@@ -499,23 +499,23 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                     dataframe.columns, merge_columns),
                 set={
                     col_name: v
-                    for col_name, v in update_columns.items()
+                    for col_name, v in dataframe_columns_obj.items()
                     if col_name != ic.DATE_ROW_INSERTED  # Remains the same
                 }
             )
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
         updated_table = updated_table \
-            .whenNotMatchedInsert(values=update_columns) \
+            .whenNotMatchedInsert(values=dataframe_columns_obj) \
             .whenMatchedUpdate(
                 condition=_difference_condition_string(
                     dataframe.columns, merge_columns),
-                set=update_columns
+                set=dataframe_columns_obj
             )
     elif merge_type == MergeType.MERGE_INSERT:
         # Only insert
         updated_table = updated_table \
-            .whenNotMatchedInsert(values=update_columns)
+            .whenNotMatchedInsert(values=dataframe_columns_obj)
     else:
         raise Exception(
             f"{merge_type} not a recognised merge type! "
