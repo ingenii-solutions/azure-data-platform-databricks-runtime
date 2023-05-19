@@ -93,7 +93,7 @@ def create_file_table(spark: SparkSession, import_entry: ImportFileEntry,
     ]
     if missing_merge_columns:
         raise Exception(
-            f"Columns set as primary keys, but not present in raw file!: "
+            f"Columns set as primary keys, but not present in raw file: "
             f"{','.join(missing_merge_columns)}"
         )
 
