@@ -104,26 +104,32 @@ class TestSchemaValidation(TestCase):
         test_source = deepcopy(self.example_source)
         orig_col_name = test_source["tables"][self.table]["columns"][1]["name"]
 
+        # Illegal characters
         test_source["tables"][self.table]["columns"][1]["name"] = \
             orig_col_name + "{}"
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
+        # Illegal characters even with backticks
         test_source["tables"][self.table]["columns"][1]["name"] = \
             "`" + orig_col_name + "{}`"
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
+        # Allowed with backticks
         test_source["tables"][self.table]["columns"][1]["name"] = \
             "`" + orig_col_name + "[]`"
         check_source_schema(test_source)
 
+        # Not allowed without backticks
         test_source["tables"][self.table]["columns"][1]["name"] = \
             orig_col_name + "[]"
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
+        # Only internal columns can start with '_'
         test_source["tables"][self.table]["columns"][1]["name"] = \
             "_" + orig_col_name
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
+        # Only internal columns can start with '_', even with backticks
         test_source["tables"][self.table]["columns"][1]["name"] = \
             "`_" + orig_col_name + "`"
         self.assertRaises(SchemaException, check_source_schema, test_source)
@@ -132,11 +138,55 @@ class TestSchemaValidation(TestCase):
         test_source = deepcopy(self.example_source)
 
         columns = test_source["tables"][self.table]["columns"]
-        columns += [columns[3]]
+        columns += [deepcopy(columns[3])]
 
         self.assertRaises(SchemaException, check_source_schema, test_source)
 
-    def test_compare_schema_and_table(self):
+        columns[-1]["name"] = columns[-1]["name"].title()
+
+        self.assertRaises(SchemaException, check_source_schema, test_source)
+
+    def test_compare_schema_and_table_matching(self):
+        table_schema = self.example_source["tables"][self.table]
+
+        spark_mock = Mock(
+            sql=Mock(return_value=Mock(
+                collect=Mock(return_value=[
+                    Mock(col_name=col["name"])
+                    for col in table_schema["columns"]
+                ])
+            ))
+        )
+        import_entry_mock = Mock(source=self.source, table=self.table)
+
+        compare_schema_and_table(
+            spark_mock, import_entry_mock, table_schema=table_schema)
+
+        spark_mock.sql.assert_called_once_with(
+            f"DESCRIBE TABLE {self.source}.{self.table}",
+        )
+
+    def test_compare_schema_and_table_not_case_sensitive(self):
+        table_schema = self.example_source["tables"][self.table]
+
+        spark_mock = Mock(
+            sql=Mock(return_value=Mock(
+                collect=Mock(return_value=[
+                    Mock(col_name=col["name"].title())
+                    for col in table_schema["columns"]
+                ])
+            ))
+        )
+        import_entry_mock = Mock(source=self.source, table=self.table)
+
+        compare_schema_and_table(
+            spark_mock, import_entry_mock, table_schema=table_schema)
+
+        spark_mock.sql.assert_called_once_with(
+            f"DESCRIBE TABLE {self.source}.{self.table}",
+        )
+
+    def test_compare_schema_and_table_missing_columns_in_table(self):
         spark_mock = Mock(
             sql=Mock(return_value=Mock(
                 collect=Mock(return_value=[

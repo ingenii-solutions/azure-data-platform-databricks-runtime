@@ -85,16 +85,18 @@ def check_source_schema(source_dict: dict) -> List[str]:
         errors.append(
             f"Source {source_dict['name']}: "
             f"Schema named '{source_dict['schema']}' is not possible in "
-            f"Databricks. Suggested name: {handle_major_name(source_dict['schema'])}"
-            )
+            f"Databricks. Suggested name: "
+            f"{handle_major_name(source_dict['schema'])}"
+        )
 
     for _, table in source_dict.get("tables", {}).items():
         if table["name"] != handle_major_name(table["name"]):
             errors.append(
                 f"Source {source_dict['name']}: "
                 f"Table named '{table['name']}' is not possible in "
-                f"Databricks. Suggested name: {handle_major_name(table['name'])}"
-                )
+                f"Databricks. Suggested name: "
+                f"{handle_major_name(table['name'])}"
+            )
 
         # Check that the join type is understood
         if table.get("join", {}).get("type") is not None:
@@ -119,7 +121,7 @@ def check_source_schema(source_dict: dict) -> List[str]:
                         f"Trying to join on column {join_columns}, "
                         f"but {col} isn't one of the columns on the table: "
                         f"{column_names}"
-                        )
+                    )
 
         all_suggested_names = []
         for column in table.get("columns", []):
@@ -175,11 +177,14 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 ])
 
         # Check no duplicate column names
-        unique_column_names = set(all_suggested_names)
+        # Databricks is not case sensitive, while schemas can be
+        unique_column_names = {name.lower() for name in all_suggested_names}
         if len(unique_column_names) != len(all_suggested_names):
             counts = {name: 0 for name in unique_column_names}
+
             for name in all_suggested_names:
-                counts[name] += 1
+                counts[name.lower()] += 1
+
             errors.append(
                 "Duplicate columns in schema! " + ", ".join([
                     f"{k} appears {v} times"
@@ -219,12 +224,13 @@ def compare_schema_and_table(spark: SparkSession,
         else:
             raise e
 
+    # .lower() as Databricks columns not case-sensitive
     table_columns = [
-        col.col_name for col in table_information if col.data_type
+        col.col_name.lower() for col in table_information if col.data_type
     ]
     missing_table_schema = [
         col for col in table_schema["columns"]
-        if col["name"].strip("`") not in table_columns
+        if col["name"].strip("`").lower() not in table_columns
     ]
     if missing_table_schema:
         add_columns_to_table(spark, import_entry.source, import_entry.table,
