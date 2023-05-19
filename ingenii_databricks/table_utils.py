@@ -252,7 +252,7 @@ def read_file(spark: SparkSession, file_path: str, table_schema: dict
 
         # File may not have all columns or in different order
         if file_details.get("header"):
-            with open("/dbfs/" + file_path) as raw_file:
+            with open("/dbfs" + file_path) as raw_file:
                 headers = raw_file.readline().strip() \
                                   .split(file_details.get("sep", ","))
 
@@ -432,7 +432,6 @@ def _difference_condition_string(all_columns: List[str],
     """
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
-    handled_data_columns = []
     handled_merge_columns = [handle_name(column) for column in merge_columns]
 
     # Null safe comparison https://docs.microsoft.com/en-us/azure/databricks/sql/language-manual/sql-ref-null-semantics
@@ -478,6 +477,10 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
         merge_table.alias("deltatable") \
                    .merge(dataframe.alias("dataframe"),
                           _match_condition_string(merge_columns))
+    dataframe_columns_obj = {
+        col_name: f"dataframe.{col_name}"
+        for col_name in dataframe.columns
+    }
 
     if merge_type == MergeType.MERGE_DATE_ROWS:
         # Merge, but be careful with _date_row_inserted and _date_row_updated
@@ -485,32 +488,34 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
         updated_table = updated_table \
             .whenNotMatchedInsert(
                 values={
-                    col_name: f"dataframe.{col_name}"
-                    for col_name in dataframe.columns
-                    if col_name != ic.DATE_ROW_UPDATED  # _date_row_updated is null
+                    col_name: v
+                    for col_name, v in dataframe_columns_obj.items()
+                    if col_name != ic.DATE_ROW_UPDATED
+                    # _date_row_updated is null
                 }
             ) \
             .whenMatchedUpdate(
                 condition=_difference_condition_string(
                     dataframe.columns, merge_columns),
                 set={
-                    col_name: f"dataframe.{col_name}"
-                    for col_name in dataframe.columns
+                    col_name: v
+                    for col_name, v in dataframe_columns_obj.items()
                     if col_name != ic.DATE_ROW_INSERTED  # Remains the same
                 }
             )
     elif merge_type == MergeType.MERGE_UPDATE:
         # Insert, or update if any of the data columns change
         updated_table = updated_table \
-            .whenNotMatchedInsertAll() \
-            .whenMatchedUpdateAll(
+            .whenNotMatchedInsert(values=dataframe_columns_obj) \
+            .whenMatchedUpdate(
                 condition=_difference_condition_string(
-                    dataframe.columns, merge_columns)
+                    dataframe.columns, merge_columns),
+                set=dataframe_columns_obj
             )
     elif merge_type == MergeType.MERGE_INSERT:
         # Only insert
         updated_table = updated_table \
-            .whenNotMatchedInsertAll()
+            .whenNotMatchedInsert(values=dataframe_columns_obj)
     else:
         raise Exception(
             f"{merge_type} not a recognised merge type! "

@@ -188,6 +188,10 @@ class TestTableUtils(TestCase):
         "col1", "col2", "col3", "col4", "col5",
         "_date_row_inserted", "_date_row_updated"
     ]
+    update_values = {
+        col: f"dataframe.{col}"
+        for col in all_columns
+    }
     merge_columns = ["col1", "col2"]
     match_string = \
         "deltatable.col1 = dataframe.col1 AND deltatable.col2 = dataframe.col2"
@@ -213,13 +217,7 @@ class TestTableUtils(TestCase):
         updated_table = merge_table_mock.alias.return_value.merge.return_value
 
         insert_call = updated_table.whenNotMatchedInsert
-        insert_call.assert_called_once()
-        args, kwargs = insert_call.call_args_list[0]
-        self.assertTupleEqual(args, ())
-        self.assertSetEqual(set(kwargs.keys()), {"values"})
-        self.assertDictEqual(
-            kwargs["values"],
-            {
+        insert_call.assert_called_once_with(values={
                 "col1": "dataframe.col1",
                 "col2": "dataframe.col2",
                 "col3": "dataframe.col3",
@@ -230,14 +228,9 @@ class TestTableUtils(TestCase):
         )
 
         update_call = insert_call.return_value.whenMatchedUpdate
-        update_call.assert_called_once()
-        args, kwargs = update_call.call_args_list[0]
-        self.assertTupleEqual(args, ())
-        self.assertSetEqual(set(kwargs.keys()), {"condition", "set"})
-        self.assertEqual(kwargs["condition"], self.difference_string)
-        self.assertDictEqual(
-            kwargs["set"],
-            {
+        update_call.assert_called_once_with(
+            condition=self.difference_string,
+            set={
                 "col1": "dataframe.col1",
                 "col2": "dataframe.col2",
                 "col3": "dataframe.col3",
@@ -265,11 +258,14 @@ class TestTableUtils(TestCase):
 
         updated_table = merge_table_mock.alias.return_value.merge.return_value
 
-        insert_call = updated_table.whenNotMatchedInsertAll
-        insert_call.assert_called_once_with()
+        insert_call = updated_table.whenNotMatchedInsert
+        insert_call.assert_called_once_with(values=self.update_values)
 
-        update_call = insert_call.return_value.whenMatchedUpdateAll
-        update_call.assert_called_once_with(condition=self.difference_string)
+        update_call = insert_call.return_value.whenMatchedUpdate
+        update_call.assert_called_once_with(
+            condition=self.difference_string,
+            set=self.update_values
+        )
 
         update_call.return_value.execute.assert_called_once_with()
 
@@ -289,8 +285,8 @@ class TestTableUtils(TestCase):
 
         updated_table = merge_table_mock.alias.return_value.merge.return_value
 
-        insert_call = updated_table.whenNotMatchedInsertAll
-        insert_call.assert_called_once_with()
+        insert_call = updated_table.whenNotMatchedInsert
+        insert_call.assert_called_once_with(values=self.update_values)
 
         insert_call.return_value.execute.assert_called_once_with()
 
@@ -303,12 +299,10 @@ class TestTableUtils(TestCase):
         dataframe_mock.alias.assert_called_once_with("dataframe")
 
         merge_call = deltatable_mock.alias.return_value.merge
-        merge_call.assert_called_once()
-        args, kwargs = merge_call.call_args_list[0]
-        self.assertTupleEqual(args, ())
-        self.assertSetEqual(set(kwargs.keys()), {"condition", "source"})
-        self.assertEqual(kwargs["condition"], self.match_string)
-        self.assertEqual(kwargs["source"], dataframe_mock.alias.return_value)
+        merge_call.assert_called_once_with(
+            condition=self.match_string,
+            source=dataframe_mock.alias.return_value
+        )
 
         merge_call.return_value.whenMatchedDelete.assert_called_once_with()
 
