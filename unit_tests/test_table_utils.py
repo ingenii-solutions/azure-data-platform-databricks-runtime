@@ -144,15 +144,15 @@ class TestTableUtils(TestCase):
     def test_match_condition_string(self):
         self.assertEqual(
             _match_condition_string(["col1", "col{2}", "col 4"]),
-            "deltatable.col1 = dataframe.col1 AND "
-            "deltatable.col[2] = dataframe.col[2] AND "
-            "deltatable.col_4 = dataframe.col_4"
+            "deltatable.`col1` = dataframe.`col1` AND "
+            "deltatable.`col[2]` = dataframe.`col[2]` AND "
+            "deltatable.`col_4` = dataframe.`col_4`"
         )
         self.assertEqual(
             _match_condition_string("col1,col{2},col 4"),
-            "deltatable.col1 = dataframe.col1 AND "
-            "deltatable.col[2] = dataframe.col[2] AND "
-            "deltatable.col_4 = dataframe.col_4"
+            "deltatable.`col1` = dataframe.`col1` AND "
+            "deltatable.`col[2]` = dataframe.`col[2]` AND "
+            "deltatable.`col_4` = dataframe.`col_4`"
         )
 
     def test_difference_condition_string(self):
@@ -189,12 +189,12 @@ class TestTableUtils(TestCase):
         "_date_row_inserted", "_date_row_updated"
     ]
     update_values = {
-        col: f"dataframe.{col}"
+        f"`{col}`": f"dataframe.`{col}`"
         for col in all_columns
     }
     merge_columns = ["col1", "col2"]
     match_string = \
-        "deltatable.col1 = dataframe.col1 AND deltatable.col2 = dataframe.col2"
+        "deltatable.`col1` = dataframe.`col1` AND deltatable.`col2` = dataframe.`col2`"
     difference_string = \
         "NOT deltatable.`col3` <=> dataframe.`col3` OR " \
         "NOT deltatable.`col4` <=> dataframe.`col4` OR " \
@@ -218,12 +218,12 @@ class TestTableUtils(TestCase):
 
         insert_call = updated_table.whenNotMatchedInsert
         insert_call.assert_called_once_with(values={
-                "col1": "dataframe.col1",
-                "col2": "dataframe.col2",
-                "col3": "dataframe.col3",
-                "col4": "dataframe.col4",
-                "col5": "dataframe.col5",
-                "_date_row_inserted": "dataframe._date_row_inserted",
+                "`col1`": "dataframe.`col1`",
+                "`col2`": "dataframe.`col2`",
+                "`col3`": "dataframe.`col3`",
+                "`col4`": "dataframe.`col4`",
+                "`col5`": "dataframe.`col5`",
+                "`_date_row_inserted`": "dataframe.`_date_row_inserted`",
             }
         )
 
@@ -231,12 +231,12 @@ class TestTableUtils(TestCase):
         update_call.assert_called_once_with(
             condition=self.difference_string,
             set={
-                "col1": "dataframe.col1",
-                "col2": "dataframe.col2",
-                "col3": "dataframe.col3",
-                "col4": "dataframe.col4",
-                "col5": "dataframe.col5",
-                "_date_row_updated": "dataframe._date_row_updated",
+                "`col1`": "dataframe.`col1`",
+                "`col2`": "dataframe.`col2`",
+                "`col3`": "dataframe.`col3`",
+                "`col4`": "dataframe.`col4`",
+                "`col5`": "dataframe.`col5`",
+                "`_date_row_updated`": "dataframe.`_date_row_updated`",
             }
         )
 

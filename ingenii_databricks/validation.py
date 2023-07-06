@@ -186,7 +186,7 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 counts[name.lower()] += 1
 
             errors.append(
-                "Duplicate columns in schema! " + ", ".join([
+                f"Table {table['name']}: Duplicate columns in schema! " + ", ".join([
                     f"{k} appears {v} times"
                     for k, v in counts.items() if v > 1
                 ])

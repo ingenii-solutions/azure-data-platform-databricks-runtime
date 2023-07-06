@@ -407,7 +407,7 @@ def _match_condition_string(merge_columns: Union[str, List[str]]) -> str:
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
     return " AND ".join([
-        f"deltatable.{handle_name(mc)} = dataframe.{handle_name(mc)}"
+        f"deltatable.`{handle_name(mc)}` = dataframe.`{handle_name(mc)}`"
         for mc in merge_columns
     ])
 
@@ -478,7 +478,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                    .merge(dataframe.alias("dataframe"),
                           _match_condition_string(merge_columns))
     dataframe_columns_obj = {
-        col_name: f"dataframe.{col_name}"
+        f"`{col_name}`": f"dataframe.`{col_name}`"
         for col_name in dataframe.columns
     }
 
@@ -490,7 +490,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                 values={
                     col_name: v
                     for col_name, v in dataframe_columns_obj.items()
-                    if col_name != ic.DATE_ROW_UPDATED
+                    if col_name != f"`{ic.DATE_ROW_UPDATED}`"
                     # _date_row_updated is null
                 }
             ) \
@@ -500,7 +500,8 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                 set={
                     col_name: v
                     for col_name, v in dataframe_columns_obj.items()
-                    if col_name != ic.DATE_ROW_INSERTED  # Remains the same
+                    if col_name != f"`{ic.DATE_ROW_INSERTED}`"
+                    # _date_row_inserted remains the same
                 }
             )
     elif merge_type == MergeType.MERGE_UPDATE:
