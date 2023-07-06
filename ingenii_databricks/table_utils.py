@@ -407,7 +407,7 @@ def _match_condition_string(merge_columns: Union[str, List[str]]) -> str:
     if isinstance(merge_columns, str):
         merge_columns = merge_columns.split(",")
     return " AND ".join([
-        f"deltatable.{handle_name(mc)} = dataframe.{handle_name(mc)}"
+        f"deltatable.`{handle_name(mc)}` = dataframe.`{handle_name(mc)}`"
         for mc in merge_columns
     ])
 
@@ -478,7 +478,7 @@ def merge_dataframe_into_table(merge_table: DeltaTable, dataframe: DataFrame,
                    .merge(dataframe.alias("dataframe"),
                           _match_condition_string(merge_columns))
     dataframe_columns_obj = {
-        col_name: f"dataframe.{col_name}"
+        col_name: f"dataframe.`{col_name}`"
         for col_name in dataframe.columns
     }
 
