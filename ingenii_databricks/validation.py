@@ -65,14 +65,17 @@ class SchemaException(Exception):
     ...
 
 
-def check_source_schema(source_dict: dict) -> List[str]:
+def check_source_schema(
+    source_dict: dict, table_name: str = None
+) -> List[str]:
     """
     Check the names in the schema to see if we can use them in Databricks
 
     Parameters
-    source_dict
-    proposed_source : dict
+    source_dict : dict
         The schema loaded from the dbt folder structure for a particular source
+    table_name : str, by default None
+        If passed, only check the schema of this table
 
     Raises
     ------
@@ -89,7 +92,12 @@ def check_source_schema(source_dict: dict) -> List[str]:
             f"{handle_major_name(source_dict['schema'])}"
         )
 
-    for _, table in source_dict.get("tables", {}).items():
+    for t_name, table in source_dict.get("tables", {}).items():
+
+        if table_name and t_name != table_name:
+            # If the table name is passed, only check that one
+            continue
+
         if table["name"] != handle_major_name(table["name"]):
             errors.append(
                 f"Source {source_dict['name']}: "
@@ -186,7 +194,8 @@ def check_source_schema(source_dict: dict) -> List[str]:
                 counts[name.lower()] += 1
 
             errors.append(
-                f"Table {table['name']}: Duplicate columns in schema! " + ", ".join([
+                f"Table {table['name']}: Duplicate columns in schema! " +
+                ", ".join([
                     f"{k} appears {v} times"
                     for k, v in counts.items() if v > 1
                 ])
@@ -196,9 +205,9 @@ def check_source_schema(source_dict: dict) -> List[str]:
         raise SchemaException("\n".join(errors))
 
 
-def compare_schema_and_table(spark: SparkSession,
-                             import_entry: ImportFileEntry,
-                             table_schema: dict) -> None:
+def compare_schema_and_table(
+    spark: SparkSession, import_entry: ImportFileEntry, table_schema: dict
+) -> None:
     """
     Check that the source table has all the necessary columns for the
     individual file table, and if not, add those columns in. Also, check that
