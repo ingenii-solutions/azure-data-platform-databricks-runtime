@@ -2,6 +2,7 @@
 
 | Version | Changes |
 | --- | --- |
+| 0.6.4 | **Validation:** When checking table schemas, give option to only check one table |
 | 0.6.3 | **Engineering:** Handle when file table has a subset of columns, handle case sensitivity when comparing schemas and tables |
 | 0.6.2 | **Engineering:** Boost base Docker image to 9.x |
 | 0.6.1 | **Engineering:** Integration tests and minor fixes |
