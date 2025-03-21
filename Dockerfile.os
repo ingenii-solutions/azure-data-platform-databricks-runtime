@@ -1,12 +1,12 @@
-FROM databricksruntime/standard:9.x
+FROM databricksruntime/standard:15.4-LTS
 
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && \
-        apt-get install -yq libsasl2-dev build-essential g++ unixodbc-dev && \
-        apt-get clean
-RUN apt-get install -y libpython3.8-dev
+RUN apt update && apt upgrade -y && apt clean
+RUN apt install -y libpython3.11-dev
 
-RUN ln -sv /usr/include/python3.8/* /usr/include/
+# Install rust
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
