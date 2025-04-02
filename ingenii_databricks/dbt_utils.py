@@ -182,7 +182,7 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
     dependents: dict
         All the nodes that depend on this node
     """
-    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
+    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json", "--quiet")
 
     nodes, dependents = {}, {}
 
