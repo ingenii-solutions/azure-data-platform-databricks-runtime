@@ -30,8 +30,9 @@ def get_log_folder(dbt_root_folder: str) -> str:
         Path to the log folder
     """
 
-    return get_project_config(dbt_root_folder).get(
-        "log-path", dbt_root_folder + "/logs")
+    # log-path is now deprecated
+    return environ.get("DBT_LOG_PATH") or get_project_config(
+        dbt_root_folder).get("log-path", dbt_root_folder + "/logs")
 
 
 def get_log_file_path(dbt_log_folder: str) -> str:
@@ -182,7 +183,7 @@ def get_nodes_and_dependents(databricks_dbt_token: str) -> Tuple[dict, dict]:
     dependents: dict
         All the nodes that depend on this node
     """
-    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json")
+    result = run_dbt_command(databricks_dbt_token, "ls", "--output", "json", "--quiet")
 
     nodes, dependents = {}, {}
 

@@ -5,6 +5,8 @@ FROM ${REGISTRY}/${REPOSITORY}:${VERSION}
 
 WORKDIR /app
 
+RUN /databricks/python3/bin/python -m pip install --upgrade pip
+
 COPY requirements.txt requirements.txt
 RUN /databricks/python3/bin/pip install -r requirements.txt
 
