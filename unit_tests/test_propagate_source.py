@@ -176,7 +176,7 @@ class TestSourcePropagation(TestCase):
         self.assertEqual(len(all_calls), 3)
 
         args, kwargs = all_calls[0]
-        self.assertTupleEqual(args, (self.dbt_token, "ls", "--output", "json"))
+        self.assertTupleEqual(args, (self.dbt_token, "ls", "--output", "json", "--quiet"))
         self.assertDictEqual(kwargs, {})
 
         args, kwargs = all_calls[1]

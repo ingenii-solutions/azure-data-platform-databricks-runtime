@@ -2,6 +2,8 @@
 
 | Version | Changes |
 | --- | --- |
+| 0.7.1 | **Engineering:** pyspark AnalysisException no longer has 'desc' parameter |
+| 0.7.0 | **Engineering:** Update runtime to work on 15.4-LTS, dbt to V1.0.0 |
 | 0.6.4 | **Validation:** When checking table schemas, give option to only check one table |
 | 0.6.3 | **Engineering:** Handle when file table has a subset of columns, handle case sensitivity when comparing schemas and tables |
 | 0.6.2 | **Engineering:** Boost base Docker image to 9.x |
