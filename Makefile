@@ -76,6 +76,9 @@ build-container-base-os:
 push-container-base-os:
 	docker push $(REGISTRY)/$(BASE_OS_REPOSITORY):$(BASE_OS_VERSION)
 
+pull-container-base-os:
+	docker pull $(REGISTRY)/$(BASE_OS_REPOSITORY):$(BASE_OS_VERSION)
+
 build-container-base-python:
 	docker build \
 		-f Dockerfile.python \
@@ -86,6 +89,9 @@ build-container-base-python:
 
 push-container-base-python:
 	docker push $(REGISTRY)/$(BASE_PYTHON_REPOSITORY):$(BASE_PYTHON_VERSION)
+
+pull-container-base-python:
+	docker pull $(REGISTRY)/$(BASE_PYTHON_REPOSITORY):$(BASE_PYTHON_VERSION)
 
 build-container:
 	docker build \
