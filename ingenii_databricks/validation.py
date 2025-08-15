@@ -228,7 +228,7 @@ def compare_schema_and_table(
         ).collect()
     except AnalysisException as e:
         # Catch case when we haven't created the table yet
-        if "Table or view not found" in str(e):
+        if "Table or view not found" in str(e) or "[TABLE_OR_VIEW_NOT_FOUND]" in str(e):
             return
         else:
             raise e
